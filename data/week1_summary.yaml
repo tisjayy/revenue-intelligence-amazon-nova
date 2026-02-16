@@ -1,0 +1,17 @@
+business_metrics:
+  avg_margin: 0.2710000276565552
+  avg_predicted_demand: 32.00490188598633
+  avg_predicted_profit: 125.0287857055664
+  avg_predicted_revenue: 461.36077880859375
+demand_model:
+  test_mae: 2.3111112117767334
+  test_r2: 0.9912412166595459
+  test_rmse: 4.161749621506486
+  test_wmape: 7.20134602457226
+  train_wmape: 7.3011065894188585
+revenue_model:
+  test_mae: 54.93660324472352
+  test_r2: 0.9797244336008554
+  test_rmse: 98.39842846007825
+  test_wmape: 11.662324140930052
+  train_wmape: 11.086862281437806

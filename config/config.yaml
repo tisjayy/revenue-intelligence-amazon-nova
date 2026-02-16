@@ -1,0 +1,152 @@
+# Revenue Intelligence Platform Configuration
+
+# AWS Configuration
+aws:
+  region: 'us-east-1'
+  bedrock:
+    model_id: 'us.amazon.nova-lite-v1:0'  # Amazon Nova Lite - fast & efficient
+    max_tokens: 2048
+    temperature: 0.7
+    top_p: 0.9
+  # Credentials from environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+  # Or use AWS CLI profile
+
+# Geographic boundaries for NYC
+geographic:
+  nyc_bounds:
+    lat_min: 40.5774
+    lat_max: 40.9176
+    lon_min: -74.15
+    lon_max: -73.7004
+
+# Data filtering thresholds
+filtering:
+  trip_distance:
+    min: 0
+    max: 23  # miles
+  trip_time:
+    min: 1   # minutes
+    max: 720  # minutes (12 hours)
+  speed:
+    min: 0
+    max: 45.31  # mph (99th percentile)
+  fare:
+    min: 0
+    max: 1000  # dollars
+
+# Clustering configuration
+clustering:
+  n_clusters: 40
+  batch_size: 10000
+  random_state: 42
+
+# Time series configuration
+timeseries:
+  bin_size_seconds: 600  # 10-minute bins
+  lag_features: 5  # ft_1 through ft_5
+  rolling_windows: [7, 30]  # 7-day and 30-day rolling averages
+
+# Train/test split
+split:
+  train_ratio: 0.7
+  validation_ratio: 0.15
+  test_ratio: 0.15
+
+# Model hyperparameters
+models:
+  xgboost_demand:
+    learning_rate: 0.1
+    n_estimators: 1000
+    max_depth: 3
+    min_child_weight: 3
+    gamma: 0
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 200
+    reg_lambda: 200
+    random_state: 42
+  
+  xgboost_revenue:
+    learning_rate: 0.1
+    n_estimators: 1000
+    max_depth: 4
+    min_child_weight: 3
+    gamma: 0
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 100
+    reg_lambda: 100
+    random_state: 42
+
+# Feature engineering
+features:
+  exponential_moving_avg_alpha: 0.3
+  temporal_features:
+    - hour_of_day
+    - day_of_week
+    - is_weekend
+    - is_rush_hour
+    - day_of_month
+  
+  rush_hours:
+    morning: [7, 8, 9]
+    evening: [16, 17, 18, 19]
+
+# Business logic
+business:
+  platform_margin: 0.25  # 25% typical margin
+  driver_payout_pct: 0.65  # 65% goes to driver
+  payment_processing_fee: 0.029  # 2.9% Stripe fee
+  ops_cost_pct: 0.05  # 5% operational costs
+  
+  # Price elasticity assumption (demand % change per price % change)
+  default_elasticity: -0.5
+  
+  # Recommendation thresholds
+  surge_pricing_threshold: 0.9  # 90% capacity
+  promotion_threshold: 0.25  # 25th percentile demand
+  min_margin_threshold: 0.05  # 5% minimum margin
+
+# Data paths
+data:
+  raw_data_dir: "C:/Users/2594j/Downloads"
+  processed_data_dir: "C:/Users/2594j/Downloads/revenue-intelligence/data"
+  train_files:
+    - "yellow_tripdata_2015-01.parquet"
+  test_files:
+    - "yellow_tripdata_2016-01.parquet"
+    - "yellow_tripdata_2016-02.parquet"
+    - "yellow_tripdata_2016-03.parquet"
+  
+# AWS Configuration
+aws:
+  region: us-east-1
+  s3:
+    bucket_raw: revenue-intel-raw-data
+    bucket_processed: revenue-intel-processed
+    bucket_models: revenue-intel-models
+  
+  dynamodb:
+    predictions_table: revenue-predictions
+    recommendations_table: revenue-recommendations
+    agent_log_table: agent-actions
+  
+  bedrock:
+    nova_lite_model: amazon.nova-lite-v1:0
+    temperature: 0.3
+    max_tokens: 2000
+
+# Monitoring
+monitoring:
+  alert_thresholds:
+    revenue_variance_pct: 0.20  # Alert if 20% off forecast
+    negative_margin: true
+    high_uncertainty_interval_width: 0.30
+  
+  agent_check_interval_minutes: 60
+
+# Paths (local development)
+paths:
+  data_dir: ./data
+  models_dir: ./models
+  logs_dir: ./logs
