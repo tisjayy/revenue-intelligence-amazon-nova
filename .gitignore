@@ -47,6 +47,7 @@ Thumbs.db
 # Data
 data/*.parquet
 data/*.csv
+!data/test_predictions.csv
 data/*.json
 !data/.gitkeep
 
