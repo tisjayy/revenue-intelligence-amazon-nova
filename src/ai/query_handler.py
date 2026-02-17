@@ -97,6 +97,52 @@ Be specific and data-driven."""
             day_name = [k for k, v in day_map.items() if v == day_filter][0].capitalize()
             context_parts.append(f"FILTERED BY DAY: {day_name} ({len(filtered_data)} records)")
         
+        # Parse time-of-day ranges (morning, evening, etc.) if no specific hour given
+        if hour_filter is None and 'hour' in filtered_data.columns:
+            time_range_map = {
+                'morning': [6, 7, 8, 9, 10, 11],
+                'afternoon': [12, 13, 14, 15, 16],
+                'evening': [17, 18, 19, 20, 21],
+                'night': [22, 23, 0, 1, 2, 3, 4, 5]
+            }
+            
+            for time_name, hours in time_range_map.items():
+                if time_name in question_lower:
+                    filtered_data = filtered_data[filtered_data['hour'].isin(hours)]
+                    context_parts.append(f"FILTERED BY TIME RANGE: {time_name.title()} ({min(hours)}-{max(hours)}:00, {len(filtered_data)} records)")
+                    break
+        
+        # Handle deployment/allocation questions (where to send drivers, etc.)
+        if any(keyword in question_lower for keyword in ['deploy', 'allocate', 'send', 'position', 'station']):
+            if any(word in question_lower for word in ['driver', 'car', 'vehicle', 'resource']):
+                if len(filtered_data) > 0:
+                    # Find top zones by demand in filtered time period
+                    top_zones = filtered_data.groupby('cluster_id').agg({
+                        'demand_pred': 'sum',
+                        'revenue_pred': 'sum'
+                    }).nlargest(5, 'demand_pred')
+                    
+                    filter_desc = []
+                    if day_filter is not None:
+                        day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                        filter_desc.append(day_names[day_filter])
+                    if context_parts and 'TIME RANGE' in context_parts[-1]:
+                        filter_desc.append(context_parts[-1].split(': ')[1].split(' (')[0])
+                    
+                    time_context = " during " + " ".join(filter_desc) if filter_desc else ""
+                    
+                    context_parts.append(f"\n**DEPLOYMENT RECOMMENDATION{time_context.upper()}:**")
+                    context_parts.append("Top 5 zones by demand (deploy drivers here):")
+                    for zone_id, row in top_zones.iterrows():
+                        pct = (row['demand_pred'] / top_zones['demand_pred'].sum()) * 100
+                        context_parts.append(f"- Zone {int(zone_id)}: {row['demand_pred']:.0f} trips, ${row['revenue_pred']:,.0f} revenue ({pct:.0f}% of total demand)")
+                    
+                    context_parts.append(f"\nTotal demand in these 5 zones: {top_zones['demand_pred'].sum():.0f} trips")
+                    return '\n'.join(context_parts)
+                else:
+                    context_parts.append("No data available for the specified time period.")
+                    return '\n'.join(context_parts)
+        
         # Handle "maximum rides" or "most rides" queries
         time_filtered = hour_filter is not None or day_filter is not None
         if any(keyword in question_lower for keyword in ['maximum', 'max', 'most', 'highest', 'where should i', 'should i be']):
