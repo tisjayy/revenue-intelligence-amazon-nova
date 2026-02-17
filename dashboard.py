@@ -15,9 +15,15 @@ import yaml
 import os
 
 # Configure AWS credentials from Streamlit secrets (for Streamlit Cloud deployment)
-if 'AWS_ACCESS_KEY_ID' in st.secrets:
-    os.environ['AWS_ACCESS_KEY_ID'] = st.secrets['AWS_ACCESS_KEY_ID']
-    os.environ['AWS_SECRET_ACCESS_KEY'] = st.secrets['AWS_SECRET_ACCESS_KEY']
+try:
+    if 'AWS_BEARER_TOKEN_BEDROCK' in st.secrets:
+        os.environ['AWS_BEARER_TOKEN_BEDROCK'] = st.secrets['AWS_BEARER_TOKEN_BEDROCK']
+    elif 'AWS_ACCESS_KEY_ID' in st.secrets:
+        os.environ['AWS_ACCESS_KEY_ID'] = st.secrets['AWS_ACCESS_KEY_ID']
+        os.environ['AWS_SECRET_ACCESS_KEY'] = st.secrets['AWS_SECRET_ACCESS_KEY']
+except FileNotFoundError:
+    # No secrets file - running locally with environment variables
+    pass
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
