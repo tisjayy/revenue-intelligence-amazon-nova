@@ -44,25 +44,46 @@ class RevenueMonitoringAgent:
         if len(high_impact_zones) < 5:
             return []
         
-        # Detect UNDERPERFORMING zones within this high-impact group
-        # Compare to the 70th percentile within this group (realistic peer benchmark)
-        peer_benchmark = high_impact_zones[('revenue_pred', 'sum')].quantile(0.70)
+        # Calculate zone-specific benchmarks (compare each zone to its nearest peers by size)
+        # Group zones into terciles by revenue for fairness
+        high_impact_zones['revenue_tercile'] = pd.qcut(
+            high_impact_zones[('revenue_pred', 'sum')], 
+            q=3, 
+            labels=['small', 'medium', 'large'],
+            duplicates='drop'
+        )
         
-        # Find zones below benchmark with room to improve
-        underperforming = high_impact_zones[
-            high_impact_zones[('revenue_pred', 'sum')] < peer_benchmark * 0.85
-        ].copy()
+        underperforming_zones = []
         
-        # Sort by current revenue (optimize bigger zones first for max impact)
-        underperforming = underperforming.sort_values(('revenue_pred', 'sum'), ascending=False)
-        
-        for zone_id in underperforming.index[:3]:  # Top 3 by size
-            zone_data = self.df[self.df['cluster_id'] == zone_id]
-            total_rev = float(zone_stats.loc[zone_id, ('revenue_pred', 'sum')])
+        # Find underperformers within each tercile
+        for tercile in ['small', 'medium', 'large']:
+            tercile_zones = high_impact_zones[high_impact_zones['revenue_tercile'] == tercile]
+            if len(tercile_zones) < 2:
+                continue
+                
+            # Benchmark: 75th percentile of THIS tercile
+            tercile_benchmark = tercile_zones[('revenue_pred', 'sum')].quantile(0.75)
             
-            # Target: 20% improvement (achievable and realistic)
-            target_rev = total_rev * 1.20
-            potential_gain = target_rev - total_rev
+            # Find zones below 90% of their tercile benchmark
+            underperforming = tercile_zones[
+                tercile_zones[('revenue_pred', 'sum')] < tercile_benchmark * 0.90
+            ].copy()
+            
+            for zone_id in underperforming.index[:1]:  # Top 1 per tercile
+                zone_data = self.df[self.df['cluster_id'] == zone_id]
+                total_rev = float(zone_stats.loc[zone_id, ('revenue_pred', 'sum')])
+                
+                # Target: reach 95% of tercile benchmark (realistic peer-based target)
+                target_rev = tercile_benchmark * 0.95
+                potential_gain = target_rev - total_rev
+                upside_pct = ((target_rev - total_rev) / total_rev) * 100  # Positive growth opportunity
+                
+                underperforming_zones.append((zone_id, total_rev, target_rev, potential_gain, upside_pct))
+        
+        # Sort by potential gain and take top 3
+        underperforming_zones.sort(key=lambda x: x[3], reverse=True)
+        
+        for zone_id, total_rev, target_rev, potential_gain, upside_pct in underperforming_zones[:3]:
             
             anomalies.append({
                 'type': 'REVENUE_OPPORTUNITY',
@@ -71,7 +92,7 @@ class RevenueMonitoringAgent:
                 'metric': 'revenue_pred',
                 'current_value': total_rev,
                 'expected_value': float(target_rev),
-                'deviation_pct': -20.0,  # 20% below target
+                'deviation_pct': float(upside_pct),  # Positive upside to target
                 'potential_gain': float(potential_gain),
                 'detected_at': datetime.now(),
                 'status': 'INVESTIGATING'
@@ -103,6 +124,7 @@ class RevenueMonitoringAgent:
             # Target: reach 95% of top 25% benchmark (realistic improvement)
             realistic_target = rpt_target * 0.95
             potential_gain = (realistic_target - current_rpt) * total_demand
+            upside_pct = ((realistic_target - current_rpt) / current_rpt) * 100  # Positive growth opportunity
             
             anomalies.append({
                 'type': 'LOW_EFFICIENCY',
@@ -111,7 +133,7 @@ class RevenueMonitoringAgent:
                 'metric': 'revenue_per_trip',
                 'current_value': current_rpt,
                 'expected_value': float(realistic_target),
-                'deviation_pct': ((current_rpt - realistic_target) / realistic_target) * 100,
+                'deviation_pct': float(upside_pct),  # Positive upside to target
                 'potential_gain': float(potential_gain),
                 'detected_at': datetime.now(),
                 'status': 'INVESTIGATING'
@@ -167,10 +189,17 @@ STEP 2 - OPPORTUNITY ASSESSMENT:
 What is the realistic revenue uplift we can achieve? Consider market constraints and execution risks.
 
 STEP 3 - ACTION RECOMMENDATIONS:
-Propose 2-3 specific, executable actions with priority ranking:
-- Pricing adjustments (what % change?)
-- Demand stimulation (what tactics?)
-- Operational improvements (what changes?)
+Propose 2-3 specific, executable actions with priority ranking.
+
+**CRITICAL CONSTRAINTS (Must Follow):**
+- Pricing adjustments: Maximum +/-15% per change (price elasticity: -0.5 typical)
+- Demand stimulation must be cost-effective (ROI > 2x)
+- Recommendations must be implementable within 30 days
+
+Suggest:
+- Pricing adjustments (within +/-15% limit)
+- Demand stimulation (specific tactics with expected ROI)
+- Operational improvements (measurable changes)
 
 STEP 4 - IMPLEMENTATION ROADMAP:
 For the highest priority action, outline quick wins (Week 1), medium-term gains (Month 1), and sustained impact (Quarter 1).

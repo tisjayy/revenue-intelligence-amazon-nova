@@ -125,7 +125,7 @@ if 'monitoring_agent' not in st.session_state:
     )
 
 # Sidebar navigation
-st.sidebar.title("Navigation")
+st.sidebar.title("Navigation 🚕")
 page = st.sidebar.radio(
     "Choose a page:",
     ["Project Overview", "Executive Dashboard", "Autonomous Agent", "Nova Chat", "What-If Simulator", "Zone Explorer", "Recommendations"]
@@ -140,11 +140,10 @@ if page == "Project Overview":
             NovaOps
         </h1>
         <p style='font-size: 1.4rem; color: #666; margin: 0.5rem 0 0 0;'>
-            Autonomous Revenue Intelligence
+            Autonomous Revenue Intelligence 
         </p>
         <p style='font-size: 1rem; color: #999; margin: 0.3rem 0 0 0;'>
-            <strong>Agentic AI Category</strong> – Amazon Nova Hackathon
-        </p>
+            <strong>Amazon Nova AI Hackathon</p></strong>
     </div>
     """, unsafe_allow_html=True)
     
@@ -153,8 +152,8 @@ if page == "Project Overview":
     with metric_cols[0]:
         st.markdown("""
         <div style='text-align: center; padding: 1rem; background: #f0f8ff; border-radius: 10px;'>
-            <h3 style='color: #1f77b4; margin: 0; font-size: 2.5rem;'>7.20%</h3>
-            <p style='color: #666; margin: 0.5rem 0 0 0; font-size: 0.9rem;'>Prediction Error (WMAPE)</p>
+            <h3 style='color: #1f77b4; margin: 0; font-size: 2.5rem;'>14.69%</h3>
+            <p style='color: #666; margin: 0.5rem 0 0 0; font-size: 0.9rem;'>XGBoost WMAPE</p>
         </div>
         """, unsafe_allow_html=True)
     with metric_cols[1]:
@@ -167,8 +166,8 @@ if page == "Project Overview":
     with metric_cols[2]:
         st.markdown("""
         <div style='text-align: center; padding: 1rem; background: #fff7ed; border-radius: 10px;'>
-            <h3 style='color: #f59e0b; margin: 0; font-size: 2.5rem;'>260</h3>
-            <p style='color: #666; margin: 0.5rem 0 0 0; font-size: 0.9rem;'>Taxi Zones</p>
+            <h3 style='color: #f59e0b; margin: 0; font-size: 2.5rem;'>Nova 2</h3>
+            <p style='color: #666; margin: 0.5rem 0 0 0; font-size: 0.9rem;'>Amazon Nova Lite</p>
         </div>
         """, unsafe_allow_html=True)
     with metric_cols[3]:
@@ -185,58 +184,46 @@ if page == "Project Overview":
     st.markdown("---")
     st.markdown("### The Agentic AI Approach")
     
+    # Impact statement first - most important
+    st.markdown("""
+    <div style='background: linear-gradient(90deg, #1f77b4, #00b4d8); padding: 1rem; border-radius: 8px; text-align: center; margin-bottom: 1.5rem;'>
+        <h3 style='color: white; margin: 0; font-size: 1.3rem;'>3-5 day human analysis → 20 second autonomous agent response</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
     col1, col2 = st.columns(2)
     
     with col1:
+        st.markdown("**Why Agentic AI?**")
+        
+        # Comparison table
+        comparison_data = {
+            "Approach": ["Traditional ML", "Pure GenAI", "**NovaOps (Agentic AI)**"],
+            "Predictions": ["✅", "❌", "✅ XGBoost (14.69% WMAPE)"],
+            "Explanations": ["❌ No reasoning", "✅ Natural language", "✅ Amazon Nova reasoning"],
+            "Actions": ["❌ Manual only", "❌ No execution", "✅ **Autonomous recommendations**"]
+        }
+        st.dataframe(pd.DataFrame(comparison_data), hide_index=True, use_container_width=True)
+        
         st.markdown("""
-        **Traditional ML:** Predicts revenue accurately (7.20% error) but can't explain *why* or recommend *how* to optimize.
-        
-        **Pure GenAI:** Explains trends naturally but can't reliably compute financial outcomes from raw data.
-        
-        **NovaOps = ML + Amazon Nova Reasoning:**
-        - **The Calculator:** XGBoost trained on 400K time-series samples (from 12.7M trips)
-        - **The Analyst:** Amazon Nova interprets patterns and generates actionable strategies
+        **How it works:**
+        - **The Calculator:** XGBoost on 400K samples (12.7M trips)
+        - **The Analyst:** Amazon Nova 2 Lite reasoning engine
         """)
     
     with col2:
+        st.markdown("**NovaOps Workflow:**")
         st.markdown("""
-        **Autonomous Agent Workflow:**
-        
-        1. **Detect** → Monitors 40 zone clusters continuously
-        2. **Investigate** → Multi-step reasoning with Amazon Nova
-        3. **Recommend** → Proposes pricing/supply strategies  
-        4. **Execute** → (Future) Automated optimization
-        
-        **Impact:** 3-5 day human analysis → **20 second agent response**
-        """)
+        <div style='background: #e8f5e9; padding: 1rem; border-radius: 8px; border-left: 4px solid #4caf50;'>
+        <ol style='margin: 0; padding-left: 1.5rem;'>
+            <li><strong>Detect</strong> → Autonomous anomaly detection across 40 clusters</li>
+            <li><strong>Investigate</strong> → Multi-step reasoning with <strong>Amazon Nova 2 Lite</strong></li>
+            <li><strong>Recommend</strong> → Autonomous strategy generation</li>
+            <li><strong>Execute</strong> → Human approval needed</li>
+        </ol>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Business Context
-    st.markdown("---")
-    st.subheader("▸ Business Problem") 
-        
-        Traditional statistical models (XGBoost, ARIMA) provide highly accurate forecasts but cannot explain results 
-        in business terms. Pure generative AI models can explain trends but cannot reliably compute financial outcomes 
-        from raw operational data.
-
-        NovaOps is an **Autonomous Reasoning Engine** that doesn’t just predict the *what* (Revenue = $X),  
-        but diagnoses the *why* (Driver shortage, demand surge, weather impact) and recommends — and eventually 
-        executes — the *how* (pricing surge, supply reallocation, incentive strategy).
-
-        **■ The Calculator — XGBoost Forecast Engine**  
-        Trained on 400K+ aggregated time-series samples derived from **12.7M real-world trips**, capturing spatial 
-        and temporal demand patterns to generate reliable demand, revenue, and profit forecasts.
-
-        **□ The Analyst — Amazon Nova Reasoning Engine**  
-        Interprets model outputs using operational context (time-of-day patterns, zone demand dynamics, constraints) 
-        to produce business explanations and revenue optimization recommendations.
-        """)
-    
-    with col2:
-        st.metric("XGBoost Accuracy", "7.20% WMAPE", help="Weighted Mean Absolute Percentage Error - demand prediction")
-        st.metric("Dataset Size", "12.7M trips", help="NYC TLC trip records (12.6M cleaned)")
-        st.metric("Nova Model", "Amazon Nova Lite", help="Fast, efficient AI reasoning")
-    
-    # Business Context
     st.markdown("---")
     st.subheader("▸ Business Problem")
     
@@ -351,14 +338,14 @@ if page == "Project Overview":
         
         with col1:
             st.markdown("**Demand Prediction Performance:**")
-            st.metric("WMAPE", "7.20%", help="Weighted Mean Absolute Percentage Error")
-            st.metric("MAE", "2.31 trips", help="Mean Absolute Error")
-            st.metric("R² Score", "0.991", help="Variance explained by model (99.1%)")
+            st.metric("WMAPE", "14.69%", help="Weighted Mean Absolute Percentage Error")
+            st.metric("MAE", "4.72 trips", help="Mean Absolute Error")
+            st.metric("R² Score", "0.966", help="Variance explained by model (96.6%)")
             
             st.markdown("**Revenue Prediction Performance:**")
-            st.metric("WMAPE", "11.66%", help="Weighted Mean Absolute Percentage Error")
-            st.metric("MAE", "$54.94", help="Mean Absolute Error per time bin")
-            st.metric("R² Score", "0.980", help="Variance explained by model (98.0%)")
+            st.metric("WMAPE", "18.48%", help="Weighted Mean Absolute Percentage Error")
+            st.metric("MAE", "$87.05", help="Mean Absolute Error per time bin")
+            st.metric("R² Score", "0.944", help="Variance explained by model (94.4%)")
         
         with col2:
             st.markdown("**Feature Importance:**")
@@ -636,9 +623,9 @@ elif page == "Executive Dashboard":
     st.plotly_chart(fig, use_container_width=True)
     
     # Nova-generated executive summary
-    st.subheader("AI-Generated Executive Summary")
+    st.subheader("Nova-Generated Summary")
     
-    if st.button("Generate Executive Summary"):
+    if st.button("Generate Summary"):
         with st.spinner("Generating AI summary..."):
             summary = st.session_state.nova.generate_executive_summary(st.session_state.predictions)
             st.markdown(f'<div class="nova-response">{summary}</div>', unsafe_allow_html=True)
@@ -834,6 +821,10 @@ elif page == "Zone Explorer":
             
             # Zone time series - Improved visualization
             st.subheader("Revenue Trend Analysis")
+            
+            # Explanation box for correlation
+            st.info("📊 **Why Revenue & Demand Correlate:** Revenue = Demand × Average Fare. NYC taxi fares are regulated (base + distance/time), so prices are relatively stable within zones. Divergence occurs during surge pricing or route efficiency changes.")
+            
             zone_data = st.session_state.predictions[
                 st.session_state.predictions['cluster_id'] == selected_zone
             ].sort_values('time_bin').reset_index(drop=True)
@@ -841,6 +832,9 @@ elif page == "Zone Explorer":
             if len(zone_data) > 0:
                 # Create meaningful time labels
                 zone_data['period'] = range(1, len(zone_data) + 1)
+                
+                # Calculate effective price per trip
+                zone_data['price_per_trip'] = zone_data['revenue_pred'] / zone_data['demand_pred'].replace(0, 1)
                 
                 fig = go.Figure()
                 
@@ -902,8 +896,8 @@ elif page == "Zone Explorer":
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Summary stats
-                col1, col2, col3 = st.columns(3)
+                # Summary stats - Now show BOTH revenue and price dynamics
+                col1, col2, col3, col4 = st.columns(4)
                 with col1:
                     st.metric("Highest Revenue Period", f"#{zone_data.loc[zone_data['revenue_pred'].idxmax(), 'period']:.0f}", 
                              f"${zone_data['revenue_pred'].max():,.2f}")
@@ -913,6 +907,69 @@ elif page == "Zone Explorer":
                 with col3:
                     volatility = zone_data['revenue_pred'].std() / zone_data['revenue_pred'].mean() * 100
                     st.metric("Revenue Volatility", f"{volatility:.1f}%", "Coefficient of Variation")
+                with col4:
+                    price_volatility = zone_data['price_per_trip'].std() / zone_data['price_per_trip'].mean() * 100
+                    st.metric("Price Volatility", f"{price_volatility:.1f}%", "Shows price dynamics")
+                
+                # Add price dynamics chart
+                st.subheader("Price Dynamics Analysis")
+                st.markdown("**Revenue = Demand × Price**. Below shows how average fare per trip varies over time:")
+                
+                fig2 = go.Figure()
+                
+                fig2.add_trace(go.Scatter(
+                    x=zone_data['period'],
+                    y=zone_data['price_per_trip'],
+                    mode='lines+markers',
+                    name='Avg Fare per Trip',
+                    line=dict(color='#2ca02c', width=2),
+                    marker=dict(size=6, color=zone_data['price_per_trip'], colorscale='Viridis', showscale=True),
+                    hovertemplate='Period: %{x}<br>Price: $%{y:.2f}<extra></extra>'
+                ))
+                
+                # Add average line
+                avg_price = zone_data['price_per_trip'].mean()
+                fig2.add_hline(
+                    y=avg_price, 
+                    line_dash="dash", 
+                    line_color="red",
+                    line_width=2,
+                    annotation_text=f"Avg: ${avg_price:.2f}",
+                    annotation_position="top left",
+                    annotation=dict(
+                        font=dict(size=11, color="red"),
+                        bgcolor="rgba(255,255,255,0.8)",
+                        bordercolor="red",
+                        borderwidth=1
+                    )
+                )
+                
+                fig2.update_layout(
+                    title=f'Average Fare per Trip Over Time (Zone {selected_zone})',
+                    xaxis_title='Time Period',
+                    yaxis_title='Price per Trip ($)',
+                    yaxis=dict(tickformat='$.2f'),
+                    height=350,
+                    hovermode='x',
+                    margin=dict(t=40, b=40, l=50, r=50)
+                )
+                
+                st.plotly_chart(fig2, use_container_width=True)
+                
+                # Price range explanation
+                price_range = zone_data['price_per_trip'].max() - zone_data['price_per_trip'].min()
+                st.markdown(f"""
+                **Price Range:** ${zone_data['price_per_trip'].min():.2f} - ${zone_data['price_per_trip'].max():.2f} (${price_range:.2f} variation)
+                
+                **Why correlation exists:** NYC taxi pricing is regulated with fixed base fare + metered distance/time. 
+                Within a zone, trip distances are similar, resulting in relatively stable average fares. 
+                
+                **When divergence occurs:**
+                - Rush hour surges (higher $/trip, same demand)
+                - Airport trips (long distance premium)
+                - Tip variations in predicted revenue
+                - Route efficiency changes (shorter trips = lower $/trip)
+                """)
 
 # ----- PAGE 5: RECOMMENDATIONS -----
 elif page == "Recommendations":
@@ -1039,8 +1096,8 @@ elif page == "Autonomous Agent":
                         st.metric(
                             metric_label, 
                             current_display,
-                            delta=f"{anomaly['deviation_pct']:.1f}%",
-                            delta_color="inverse"
+                            delta=f"+{anomaly['deviation_pct']:.1f}% to target",
+                            delta_color="off"
                         )
                     
                     with col3:

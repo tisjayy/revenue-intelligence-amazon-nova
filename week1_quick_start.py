@@ -191,12 +191,12 @@ for cluster in unique_clusters:
 # Drop rows with NaN lag features
 ts_data = ts_data.dropna()
 
-# Exponential moving average
+# Exponential moving average (shifted by 1 to avoid look-ahead bias)
 alpha = config['features']['exponential_moving_avg_alpha']
 for cluster in unique_clusters:
     cluster_mask = ts_data['cluster_id'] == cluster
     cluster_data = ts_data[cluster_mask].sort_values('time_bin')
-    ts_data.loc[cluster_mask, 'exp_avg'] = cluster_data['demand'].ewm(alpha=alpha).mean().values
+    ts_data.loc[cluster_mask, 'exp_avg'] = cluster_data['demand'].ewm(alpha=alpha).mean().shift(1).values
 
 print(f"✅ Lag features created: ft_1 to ft_{lag_features}, exp_avg")
 print(f"Final dataset: {len(ts_data):,} records")

@@ -268,8 +268,9 @@ def create_rolling_features(
     
     # Create rolling features per cluster
     for window in windows:
+        # Shift by 1 to avoid look-ahead bias (exclude current observation)
         df[f'rolling_avg_{window}'] = df.groupby('pickup_cluster')[target_col].transform(
-            lambda x: x.rolling(window=window, min_periods=1).mean()
+            lambda x: x.rolling(window=window, min_periods=1).mean().shift(1)
         )
     
     return df
@@ -297,9 +298,9 @@ def create_exponential_moving_average(
     # Sort by cluster and time
     df = df.sort_values(['pickup_cluster', 'pickup_bins'])
     
-    # Calculate EMA per cluster
+    # Calculate EMA per cluster (shift to avoid look-ahead bias)
     df['exp_avg'] = df.groupby('pickup_cluster')[target_col].transform(
-        lambda x: x.ewm(alpha=alpha, adjust=False).mean()
+        lambda x: x.ewm(alpha=alpha, adjust=False).mean().shift(1)
     )
     
     return df
