@@ -184,7 +184,7 @@ if page == "Project Overview":
     # Visual Demo - Top Zones Performance
     st.markdown("### 📊 Live Revenue Intelligence")
     
-    top_zones = st.session_state.predictions.groupby('zone_id').agg({
+    top_zones = st.session_state.predictions.groupby('cluster_id').agg({
         'revenue_pred': 'sum',
         'demand_pred': 'sum',
         'profit_pred': 'sum'
@@ -192,7 +192,7 @@ if page == "Project Overview":
     
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        x=top_zones['zone_id'],
+        x=top_zones['cluster_id'],
         y=top_zones['revenue_pred'],
         name='Revenue',
         marker_color='#1f77b4',
@@ -202,7 +202,7 @@ if page == "Project Overview":
     
     fig.update_layout(
         title='Top 10 Revenue Zones - Real Predictions',
-        xaxis_title='Zone ID',
+        xaxis_title='Zone Cluster ID',
         yaxis_title='Total Revenue ($)',
         height=350,
         showlegend=False,
