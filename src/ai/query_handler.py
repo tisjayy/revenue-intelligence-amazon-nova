@@ -136,6 +136,20 @@ RULES:
 - Keep under 8 lines
 - Confidence 0.78-0.90 based on how clearly zones cluster"""
         
+        # For general/conversational questions (no structured format)
+        elif any(word in question_lower for word in ['about this project', 'what is this', 'explain this', 'tell me about', 'how does this', 'what can you', 'describe this', 'overview', 'introduction']):
+            prompt = f"""You are a helpful assistant for a revenue intelligence platform built for Amazon Nova AI Hackathon.
+
+USER QUESTION: {question}
+
+Answer naturally and conversationally. Explain that this is NovaOps - an autonomous revenue intelligence platform for ride-sharing operations that:
+- Uses XGBoost ML models to predict demand and revenue across 260 NYC taxi zones
+- Leverages Amazon Nova 2 Lite for natural language reasoning and recommendations
+- Features an autonomous agent that detects anomalies and proposes optimizations
+- Provides what-if scenario analysis for pricing decisions
+
+Keep your response friendly, informative, and under 100 words. No structured format needed."""
+        
         # For single zone queries (default)
         else:
             prompt = f"""You are a revenue intelligence assistant answering questions about ride-sharing forecasts.
