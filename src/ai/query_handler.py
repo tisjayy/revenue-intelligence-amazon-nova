@@ -41,27 +41,16 @@ class QueryHandler:
         # Determine response style based on question type
         question_lower = question.lower()
         
-        # Helper function to check if question is asking for specific data/metrics
-        def is_data_query():
-            """Returns True if question is clearly asking for specific data/metrics"""
-            # Specific zone queries (zone 132, cluster 45, etc.)
-            if re.search(r'\b(zone|cluster)\s*\d+', question_lower):
-                return True
-            # Comparison with zone numbers
-            if re.search(r'compare.*\d+', question_lower):
-                return True
-            # Lists of zones
-            if context and '\n-' in context and any(word in question_lower for word in ['which zone', 'what zone', 'show me zone']):
-                return True
-            # Platform aggregate metrics
-            if any(phrase in question_lower for phrase in ['total revenue', 'total demand', 'total profit', 'average margin', 'platform total']):
-                return True
-            return False
+        # Check if question is asking for specific zone numbers or explicit comparisons
+        has_zone_numbers = bool(re.search(r'\b(zone|cluster)\s*\d+', question_lower))
+        is_comparison = any(word in question_lower for word in ['compare', 'versus', 'vs', 'vs.']) and has_zone_numbers
+        is_zone_list = any(phrase in question_lower for phrase in ['which zone', 'what zone', 'show me zone', 'list zone', 'highest', 'lowest', 'best', 'worst', 'top zone', 'bottom zone'])
+        is_aggregate = any(phrase in question_lower for phrase in ['total revenue', 'total demand', 'total profit', 'average margin', 'platform total', 'overall revenue', 'overall demand'])
         
-        # STRUCTURED FORMATS (only for clear data queries)
+        # STRUCTURED FORMATS (only for explicit data queries)
         
-        # Zone comparison queries
-        if any(word in question_lower for word in ['compare', 'versus', 'vs', 'vs.', 'difference between']) and is_data_query():
+        # Zone comparison queries (explicit zone numbers + comparison words)
+        if is_comparison:
             prompt = f"""You are a revenue intelligence assistant.
 
 USER QUESTION: {question}
@@ -92,8 +81,8 @@ RULES:
 - Use actual data from context above
 - Confidence should be 0.75-0.92 based on data volume (more periods = higher confidence)"""
         
-        # Platform aggregate metrics (total/average with clear metric name)
-        elif is_data_query() and any(word in question_lower for word in ['total', 'average', 'overall', 'platform']):
+        # Platform aggregate metrics
+        elif is_aggregate:
             prompt = f"""You are a revenue intelligence assistant.
 
 USER QUESTION: {question}
@@ -123,8 +112,8 @@ RULES:
 - Use actual data from context
 - Confidence 0.80-0.95 for aggregate metrics (more data points = higher confidence)"""
         
-        # Zone list queries (asking for which zones)
-        elif context and '\n-' in context and any(phrase in question_lower for word in ['which zone', 'what zone', 'show me zone', 'list zone', 'zones with'] for phrase in [word]):
+        # Zone list queries (which zones, highest, lowest, etc.)
+        elif is_zone_list and context and len(context) > 50:
             prompt = f"""You are a revenue intelligence assistant.
 
 USER QUESTION: {question}
@@ -156,8 +145,8 @@ RULES:
 - Keep under 8 lines
 - Confidence 0.78-0.90 based on how clearly zones cluster"""
         
-        # Specific single zone query
-        elif is_data_query() and re.search(r'\b(zone|cluster)\s*\d+', question_lower):
+        # Specific single zone query (zone 123, cluster 45, etc.)
+        elif has_zone_numbers:
             prompt = f"""You are a revenue intelligence assistant answering questions about ride-sharing forecasts.
 
 USER QUESTION: {question}
@@ -190,7 +179,7 @@ RULES:
 4. Give specific numerical targets
 5. Confidence 0.75-0.92 (higher for zones with more data points)"""
         
-        # CONVERSATIONAL (default for everything else)
+        # CONVERSATIONAL (everything else - why, how, what is, etc.)
         else:
             # Build context about the platform for conversational answers
             total_demand = self.predictions['demand_pred'].sum()
