@@ -132,8 +132,81 @@ Be specific and data-driven."""
                     # Do NOT add global statistics for time-specific queries
                     return '\n'.join(context_parts)
                 else:
-                    context_parts.append("No data matches the specified filters.")
+                    # No data for this specific time/day combination
+                    filter_desc = []
+                    if hour_filter is not None:
+                        filter_desc.append(f"{hour_filter}:00")
+                    if day_filter is not None:
+                        day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                        filter_desc.append(day_names[day_filter])
+                    
+                    context_parts.append(f"No prediction data available for {' '.join(filter_desc)}.")
+                    context_parts.append(f"This time/day combination is not in the test dataset.")
+                    context_parts.append(f"Dataset coverage: {len(self.predictions)} zone-time predictions across {self.predictions['cluster_id'].nunique()} zones.")
                     return '\n'.join(context_parts)
+        
+        # Handle "highest/lowest/best/worst" zone queries (non-time-filtered)
+        if not time_filtered:
+            if any(keyword in question_lower for keyword in ['highest', 'best', 'top', 'maximum']):
+                # Revenue potential
+                if any(word in question_lower for word in ['revenue', 'potential', 'profitable']):
+                    top_zones = self.predictions.groupby('cluster_id')['revenue_pred'].sum().nlargest(5)
+                    context_parts.append("\n**TOP 5 ZONES BY REVENUE:**")
+                    for zone_id, revenue in top_zones.items():
+                        zone_demand = self.predictions[self.predictions['cluster_id'] == zone_id]['demand_pred'].sum()
+                        context_parts.append(f"- Zone {int(zone_id)}: ${revenue:,.0f} revenue, {zone_demand:.0f} trips")
+                    return '\n'.join(context_parts)
+                
+                # Demand
+                elif any(word in question_lower for word in ['demand', 'rides', 'trips', 'busy']):
+                    top_zones = self.predictions.groupby('cluster_id')['demand_pred'].sum().nlargest(5)
+                    context_parts.append("\n**TOP 5 ZONES BY DEMAND:**")
+                    for zone_id, demand in top_zones.items():
+                        zone_rev = self.predictions[self.predictions['cluster_id'] == zone_id]['revenue_pred'].sum()
+                        context_parts.append(f"- Zone {int(zone_id)}: {demand:.0f} trips, ${zone_rev:,.0f} revenue")
+                    return '\n'.join(context_parts)
+            
+            elif any(keyword in question_lower for keyword in ['lowest', 'worst', 'bottom', 'minimum', 'weakest']):
+                # Low demand zones
+                if any(word in question_lower for word in ['demand', 'rides', 'trips']):
+                    bottom_zones = self.predictions.groupby('cluster_id')['demand_pred'].sum().nsmallest(5)
+                    context_parts.append("\n**BOTTOM 5 ZONES BY DEMAND:**")
+                    for zone_id, demand in bottom_zones.items():
+                        zone_rev = self.predictions[self.predictions['cluster_id'] == zone_id]['revenue_pred'].sum()
+                        context_parts.append(f"- Zone {int(zone_id)}: {demand:.0f} trips, ${zone_rev:,.0f} revenue")
+                    return '\n'.join(context_parts)
+                
+                # Low revenue zones
+                elif any(word in question_lower for word in ['revenue', 'profit', 'performance']):
+                    bottom_zones = self.predictions.groupby('cluster_id')['revenue_pred'].sum().nsmallest(5)
+                    context_parts.append("\n**BOTTOM 5 ZONES BY REVENUE:**")
+                    for zone_id, revenue in bottom_zones.items():
+                        zone_demand = self.predictions[self.predictions['cluster_id'] == zone_id]['demand_pred'].sum()
+                        context_parts.append(f"- Zone {int(zone_id)}: ${revenue:,.0f} revenue, {zone_demand:.0f} trips")
+                    return '\n'.join(context_parts)
+            
+            elif any(keyword in question_lower for keyword in ['improve', 'focus', 'optimize', 'fix']):
+                # Zones needing improvement - low revenue but decent size
+                zone_summary = self.predictions.groupby('cluster_id').agg({
+                    'revenue_pred': 'sum',
+                    'demand_pred': 'sum',
+                    'margin_pred': 'mean'
+                }).reset_index()
+                
+                # Find underperformers: below median revenue with above 25th percentile demand
+                median_rev = zone_summary['revenue_pred'].median()
+                p25_demand = zone_summary['demand_pred'].quantile(0.25)
+                
+                improvement_zones = zone_summary[
+                    (zone_summary['revenue_pred'] < median_rev) & 
+                    (zone_summary['demand_pred'] > p25_demand)
+                ].nsmallest(5, 'revenue_pred')
+                
+                context_parts.append("\n**TOP 5 ZONES FOR IMPROVEMENT:**")
+                context_parts.append("(Zones with decent demand but below-median revenue)")
+                for _, row in improvement_zones.iterrows():
+                    context_parts.append(f"- Zone {int(row['cluster_id'])}: ${row['revenue_pred']:,.0f} revenue, {row['demand_pred']:.0f} trips, {row['margin_pred']*100:.1f}% margin")
+                return '\n'.join(context_parts)
         
         # Overall summary (only for non-time-filtered general questions)
         if not time_filtered and (len(context_parts) == 0 or 'average' in question_lower or 'overall' in question_lower):
