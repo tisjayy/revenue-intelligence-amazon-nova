@@ -124,6 +124,49 @@ if 'monitoring_agent' not in st.session_state:
         st.session_state.nova
     )
 
+if 'chat_history' not in st.session_state:
+    st.session_state.chat_history = {}
+
+def render_nova_chat_widget(page_context=""):
+    """Render an integrated Nova Chat widget at the bottom of any page"""
+    with st.expander("💬 Ask Nova About This Data", expanded=False):
+        st.markdown("Ask questions about what you're viewing on this page")
+        
+        # Initialize page-specific chat history
+        if page_context not in st.session_state.chat_history:
+            st.session_state.chat_history[page_context] = []
+        
+        # Query input
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            query = st.text_input(
+                "Your question:", 
+                placeholder="e.g., Which zones should I focus on?",
+                key=f"nova_query_{page_context}"
+            )
+        with col2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            ask_button = st.button("Ask", key=f"ask_{page_context}", use_container_width=True)
+        
+        if ask_button and query:
+            with st.spinner("Nova is thinking..."):
+                answer = st.session_state.query_handler.answer_query(query)
+                st.session_state.chat_history[page_context].append({
+                    'timestamp': datetime.now(),
+                    'query': query,
+                    'answer': answer
+                })
+                st.rerun()
+        
+        # Display recent chat (last 3 exchanges)
+        if st.session_state.chat_history[page_context]:
+            st.markdown("---")
+            st.markdown("**Recent Questions:**")
+            for chat in reversed(st.session_state.chat_history[page_context][-3:]):
+                st.markdown(f"**You:** {chat['query']}")
+                st.markdown(f'<div class="nova-response">{chat["answer"]}</div>', unsafe_allow_html=True)
+                st.markdown("")
+
 # Sidebar navigation
 st.sidebar.title("Navigation 🚕")
 page = st.sidebar.radio(
@@ -627,15 +670,22 @@ elif page == "Executive Dashboard":
         with st.spinner("Generating AI summary..."):
             summary = st.session_state.nova.generate_executive_summary(st.session_state.predictions)
             st.markdown(f'<div class="nova-response">{summary}</div>', unsafe_allow_html=True)
+    
+    # Integrated Nova Chat
+    st.markdown("---")
+    render_nova_chat_widget("executive_dashboard")
 
 # ----- PAGE 2: NOVA CHAT -----
 elif page == "Nova Chat":
     st.markdown('<p class="main-header">Amazon Nova Chat - Natural Language Reasoning</p>', unsafe_allow_html=True)
     st.markdown("Ask questions about your revenue predictions in natural language")
     
-    # Chat history
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = []
+    st.info("💡 **Tip:** Nova Chat is now integrated at the bottom of Executive Dashboard, Zone Insights, and Recommendations pages for contextual assistance!")
+    
+    # Chat history for standalone page
+    chat_page_key = "nova_chat_standalone"
+    if chat_page_key not in st.session_state.chat_history:
+        st.session_state.chat_history[chat_page_key] = []
     
     # Query input
     query = st.text_input("Your question:", placeholder="e.g., Which zones have the highest revenue potential?")
@@ -646,7 +696,7 @@ elif page == "Nova Chat":
             if query:
                 with st.spinner("Thinking..."):
                     answer = st.session_state.query_handler.answer_query(query)
-                    st.session_state.chat_history.append({
+                    st.session_state.chat_history[chat_page_key].append({
                         'timestamp': datetime.now(),
                         'query': query,
                         'answer': answer
@@ -654,11 +704,11 @@ elif page == "Nova Chat":
     
     with col2:
         if st.button("Clear History"):
-            st.session_state.chat_history = []
+            st.session_state.chat_history[chat_page_key] = []
     
     # Display chat history
     st.subheader("Chat History")
-    for chat in reversed(st.session_state.chat_history):
+    for chat in reversed(st.session_state.chat_history[chat_page_key]):
         st.markdown(f"**You ({chat['timestamp'].strftime('%H:%M:%S')}):** {chat['query']}")
         st.markdown(f'<div class="nova-response"><strong>Nova:</strong> {chat["answer"]}</div>', unsafe_allow_html=True)
         st.markdown("---")
@@ -675,7 +725,7 @@ elif page == "Nova Chat":
     
     for q in sample_questions:
         if st.sidebar.button(q, key=f"sample_{q[:20]}"):
-            st.session_state.chat_history.append({
+            st.session_state.chat_history[chat_page_key].append({
                 'timestamp': datetime.now(),
                 'query': q,
                 'answer': st.session_state.query_handler.answer_query(q)
@@ -968,6 +1018,10 @@ elif page == "Zone Insights":
                 - Tip variations in predicted revenue
                 - Route efficiency changes (shorter trips = lower $/trip)
                 """)
+                
+                # Integrated Nova Chat
+                st.markdown("---")
+                render_nova_chat_widget(f"zone_insights_{selected_zone}")
 
 # ----- PAGE 5: RECOMMENDATIONS -----
 elif page == "Recommendations":
@@ -1000,6 +1054,10 @@ elif page == "Recommendations":
             st.subheader("Executive Report")
             report = st.session_state.rec_engine.generate_recommendation_report(validated_recs)
             st.markdown(f'<div class="nova-response">{report}</div>', unsafe_allow_html=True)
+            
+            # Integrated Nova Chat
+            st.markdown("---")
+            render_nova_chat_widget("recommendations")
 
 # ----- PAGE 6: AUTONOMOUS AGENT (Agentic AI) -----
 elif page == "Autonomous Agent":
