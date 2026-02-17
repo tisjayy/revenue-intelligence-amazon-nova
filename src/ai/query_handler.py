@@ -63,10 +63,14 @@ One clear sentence explaining which zone performs better and why.
 Suggested Action:
 Specific recommendation with a percentage target or timeframe.
 
+Signal Confidence: 0.XX
+Basis: XGBoost predictions + Historical zone performance patterns
+
 RULES:
 - Don't use dollar signs in the output (just write amounts as numbers)
 - Keep formatting simple to avoid markdown issues
-- Use actual data from context above"""
+- Use actual data from context above
+- Confidence should be 0.75-0.92 based on data volume (more periods = higher confidence)"""
         
         # For aggregate/statistical queries
         elif any(word in question_lower for word in ['average', 'total', 'overall', 'mean', 'sum']):
@@ -90,10 +94,14 @@ One sentence about what this means.
 Suggested Action:
 How to maintain or improve this metric.
 
+Signal Confidence: 0.XX
+Basis: Aggregate XGBoost forecasts across all zones
+
 RULES:
-- Keep it under 5 lines
+- Keep it under 6 lines
 - Omit dollar signs from output
-- Use actual data from context"""
+- Use actual data from context
+- Confidence 0.80-0.95 for aggregate metrics (more data points = higher confidence)"""
         
         # For zone list queries (lowest/highest/top/bottom)
         elif context and '\n-' in context and any(word in question_lower for word in ['lowest', 'highest', 'top', 'bottom', 'worst', 'best']):
@@ -119,10 +127,14 @@ One sentence about common characteristics.
 Suggested Action:
 Specific action with percentage.
 
+Signal Confidence: 0.XX
+Basis: Ranked XGBoost predictions + Comparative zone analysis
+
 RULES:
 - No dollar signs
 - Use actual zones from data
-- Keep under 6 lines"""
+- Keep under 8 lines
+- Confidence 0.78-0.90 based on how clearly zones cluster"""
         
         # For single zone queries (default)
         else:
@@ -148,11 +160,15 @@ One sentence explaining business significance.
 Suggested Action:
 Specific recommendation with numbers (e.g., "Increase drivers by 10-15%")
 
+Signal Confidence: 0.XX
+Basis: XGBoost time-series forecast + Zone historical patterns
+
 RULES:
 1. Use actual data from context
-2. Keep response under 6 lines
+2. Keep response under 8 lines
 3. No dollar signs in output (just write amounts)
-4. Give specific numerical targets"""
+4. Give specific numerical targets
+5. Confidence 0.75-0.92 (higher for zones with more data points)"""
 
         return self.nova.generate_explanation(prompt, max_tokens=500, temperature=0.6)
     
