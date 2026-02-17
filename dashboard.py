@@ -181,47 +181,38 @@ if page == "Project Overview":
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Visual Demo - Top Zones Performance
-    st.markdown("### 📊 Live Revenue Intelligence")
-    
-    top_zones = st.session_state.predictions.groupby('cluster_id').agg({
-        'revenue_pred': 'sum',
-        'demand_pred': 'sum',
-        'profit_pred': 'sum'
-    }).reset_index().nlargest(10, 'revenue_pred')
-    
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=top_zones['cluster_id'],
-        y=top_zones['revenue_pred'],
-        name='Revenue',
-        marker_color='#1f77b4',
-        text=top_zones['revenue_pred'].apply(lambda x: f'${x:,.0f}'),
-        textposition='outside'
-    ))
-    
-    fig.update_layout(
-        title='Top 10 Revenue Zones - Real Predictions',
-        xaxis_title='Zone Cluster ID',
-        yaxis_title='Total Revenue ($)',
-        height=350,
-        showlegend=False,
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
-    
     # Concise Overview
     st.markdown("---")
-    st.markdown("### 🎯 The Agentic AI Approach")
+    st.markdown("### The Agentic AI Approach")
     
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("""
-        **NovaOps: Revenue Intelligence Platform** tackles complex, real-world revenue optimization problems 
-        using **Amazon Nova reasoning capabilities**. 
+        **Traditional ML:** Predicts revenue accurately (7.20% error) but can't explain *why* or recommend *how* to optimize.
+        
+        **Pure GenAI:** Explains trends naturally but can't reliably compute financial outcomes from raw data.
+        
+        **NovaOps = ML + Amazon Nova Reasoning:**
+        - **The Calculator:** XGBoost trained on 400K time-series samples (from 12.7M trips)
+        - **The Analyst:** Amazon Nova interprets patterns and generates actionable strategies
+        """)
+    
+    with col2:
+        st.markdown("""
+        **Autonomous Agent Workflow:**
+        
+        1. **Detect** → Monitors 40 zone clusters continuously
+        2. **Investigate** → Multi-step reasoning with Amazon Nova
+        3. **Recommend** → Proposes pricing/supply strategies  
+        4. **Execute** → (Future) Automated optimization
+        
+        **Impact:** 3-5 day human analysis → **20 second agent response**
+        """)
+    
+    # Business Context
+    st.markdown("---")
+    st.subheader("▸ Business Problem") 
         
         Traditional statistical models (XGBoost, ARIMA) provide highly accurate forecasts but cannot explain results 
         in business terms. Pure generative AI models can explain trends but cannot reliably compute financial outcomes 
