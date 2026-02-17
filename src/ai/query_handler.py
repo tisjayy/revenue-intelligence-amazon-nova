@@ -45,14 +45,28 @@ USER QUESTION: {question}
 RELEVANT DATA:
 {context}
 
-Provide a clear, concise answer (2-4 sentences) that:
-1. Directly answers the question using the data
-2. Highlights key numbers
-3. Provides actionable insight
+FORMAT YOUR RESPONSE USING THIS STRUCTURE:
 
-Be specific and data-driven."""
+**[Insight Header]**
 
-        return self.nova.generate_explanation(prompt, max_tokens=400, temperature=0.6)
+Key Metrics:
+- Metric 1: [value]
+- Metric 2: [value]
+
+Operational Insight:
+[One sentence explaining what this means for operations]
+
+Suggested Action:
+[Specific, quantified recommendation with numbers/percentages]
+
+GUIDELINES:
+- Use actual data from context above
+- Format currency with commas: $2,327 not $2327.10
+- Round trips to 1 decimal: 163.4 trips
+- Give specific actions with percentages (e.g., "Increase drivers by 10-15%")
+- Keep it concise (3-4 lines total)"""
+
+        return self.nova.generate_explanation(prompt, max_tokens=500, temperature=0.6)
     
     def _extract_context(self, question: str) -> str:
         """Extract relevant data context based on question"""
