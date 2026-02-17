@@ -45,26 +45,27 @@ USER QUESTION: {question}
 RELEVANT DATA:
 {context}
 
-FORMAT YOUR RESPONSE USING THIS STRUCTURE:
+REQUIRED RESPONSE FORMAT:
 
-**[Insight Header]**
+**[Write a clear 2-4 word insight headline]**
 
 Key Metrics:
-- Metric 1: [value]
-- Metric 2: [value]
+- Zone: [zone number]
+- Demand: [X.X trips]
+- Revenue: $[X,XXX]
 
 Operational Insight:
-[One sentence explaining what this means for operations]
+[One clear sentence explaining the business significance]
 
 Suggested Action:
-[Specific, quantified recommendation with numbers/percentages]
+[Specific recommendation with percentages/numbers, e.g., "Increase drivers by 10-15%" or "Deploy 20 vehicles"]
 
-GUIDELINES:
-- Use actual data from context above
-- Format currency with commas: $2,327 not $2327.10
-- Round trips to 1 decimal: 163.4 trips
-- Give specific actions with percentages (e.g., "Increase drivers by 10-15%")
-- Keep it concise (3-4 lines total)"""
+CRITICAL RULES:
+1. Replace ALL bracketed text with actual data from context above
+2. Format currency: $2,327 (with commas, no decimals)
+3. Round trips to 1 decimal: 163.4 trips
+4. Give numerical action items (percentages, driver counts, time windows)
+5. Keep total response under 6 lines"""
 
         return self.nova.generate_explanation(prompt, max_tokens=500, temperature=0.6)
     
