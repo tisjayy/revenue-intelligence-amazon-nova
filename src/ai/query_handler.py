@@ -27,182 +27,85 @@ class QueryHandler:
     
     def answer_query(self, question: str) -> str:
         """
-        Answer a natural language question
+        Answer a natural language question using RAG + data context
         
         Args:
             question: User's question
             
         Returns:
-            AI-generated answer with data context
+            AI-generated answer with RAG context and data
         """
-        # Extract data context based on question keywords
-        context = self._extract_context(question)
+        # Get relevant documentation via RAG
+        rag_context = ""
+        if hasattr(self, 'rag') and self.rag.indexed:
+            rag_context = self.rag.get_context(question)
         
-        # Determine response style based on question type
-        question_lower = question.lower()
+        # Get relevant data context
+        data_context = self._extract_context(question)
         
-        # Check if question is asking for specific zone numbers or explicit comparisons
-        has_zone_numbers = bool(re.search(r'\b(zone|cluster)\s*\d+', question_lower))
-        is_comparison = any(word in question_lower for word in ['compare', 'versus', 'vs', 'vs.']) and has_zone_numbers
-        is_zone_list = any(phrase in question_lower for phrase in ['which zone', 'what zone', 'show me zone', 'list zone', 'highest', 'lowest', 'best', 'worst', 'top zone', 'bottom zone'])
-        is_aggregate = any(phrase in question_lower for phrase in ['total revenue', 'total demand', 'total profit', 'average margin', 'platform total', 'overall revenue', 'overall demand'])
-        
-        # STRUCTURED FORMATS (only for explicit data queries)
-        
-        # Zone comparison queries (explicit zone numbers + comparison words)
-        if is_comparison:
-            prompt = f"""You are a revenue intelligence assistant.
+        # Build unified prompt - let Nova choose the best format
+        prompt = f"""You are Nova, an AI assistant for NovaOps revenue intelligence platform.
 
 USER QUESTION: {question}
 
-DATA:
-{context}
+{rag_context}
 
-RESPONSE FORMAT (copy this structure exactly):
-
-**Zone Performance Comparison**
-
-Per-Period Averages:
-- Zone A: X.X trips/period, revenue X,XXX/period, efficiency X.XX per trip
-- Zone B: Y.Y trips/period, revenue Y,YYY/period, efficiency Y.YY per trip
-
-Key Insight:
-One clear sentence explaining which zone performs better and why.
-
-Suggested Action:
-Specific recommendation with a percentage target or timeframe.
-
-Signal Confidence: 0.XX
-Basis: XGBoost predictions + Historical zone performance patterns
-
-RULES:
-- Don't use dollar signs in the output (just write amounts as numbers)
-- Keep formatting simple to avoid markdown issues
-- Use actual data from context above
-- Confidence should be 0.75-0.92 based on data volume (more periods = higher confidence)"""
-        
-        # Platform aggregate metrics
-        elif is_aggregate:
-            prompt = f"""You are a revenue intelligence assistant.
-
-USER QUESTION: {question}
-
-DATA:
-{context}
-
-RESPONSE FORMAT:
-
-**Platform Statistics**
-
-Key Metric:
-- [Metric name]: [value] (no dollar signs)
-
-Operational Insight:
-One sentence about what this means.
-
-Suggested Action:
-How to maintain or improve this metric.
-
-Signal Confidence: 0.XX
-Basis: Aggregate XGBoost forecasts across all zones
-
-RULES:
-- Keep it under 6 lines
-- Omit dollar signs from output
-- Use actual data from context
-- Confidence 0.80-0.95 for aggregate metrics (more data points = higher confidence)"""
-        
-        # Zone list queries (which zones, highest, lowest, etc.)
-        elif is_zone_list and context and len(context) > 50:
-            prompt = f"""You are a revenue intelligence assistant.
-
-USER QUESTION: {question}
-
-DATA:
-{context}
-
-RESPONSE FORMAT:
-
-**Priority Zone List**
-
-Top Zones (extract from data above):
-1. Zone X: key metric
-2. Zone Y: key metric  
-3. Zone Z: key metric
-
-Key Pattern:
-One sentence about common characteristics.
-
-Suggested Action:
-Specific action with percentage.
-
-Signal Confidence: 0.XX
-Basis: Ranked XGBoost predictions + Comparative zone analysis
-
-RULES:
-- No dollar signs
-- Use actual zones from data
-- Keep under 8 lines
-- Confidence 0.78-0.90 based on how clearly zones cluster"""
-        
-        # Specific single zone query (zone 123, cluster 45, etc.)
-        elif has_zone_numbers:
-            prompt = f"""You are a revenue intelligence assistant answering questions about ride-sharing forecasts.
-
-USER QUESTION: {question}
-
-RELEVANT DATA:
-{context}
-
-RESPONSE FORMAT:
-
-**[Clear 2-4 Word Headline]**
-
-Key Metrics:
-- Zone: [number]
-- Demand: [X.X] trips
-- Revenue: [X,XXX] (omit dollar sign to avoid formatting issues)
-
-Operational Insight:
-One sentence explaining business significance.
-
-Suggested Action:
-Specific recommendation with numbers (e.g., "Increase drivers by 10-15%")
-
-Signal Confidence: 0.XX
-Basis: XGBoost time-series forecast + Zone historical patterns
-
-RULES:
-1. Use actual data from context
-2. Keep response under 8 lines
-3. No dollar signs in output (just write amounts)
-4. Give specific numerical targets
-5. Confidence 0.75-0.92 (higher for zones with more data points)"""
-        
-        # CONVERSATIONAL (everything else - why, how, what is, etc.)
-        else:
-            # Build context about the platform for conversational answers
-            total_demand = self.predictions['demand_pred'].sum()
-            total_revenue = self.predictions['revenue_pred'].sum()
-            num_zones = self.predictions['cluster_id'].nunique()
-            
-            prompt = f"""You are an AI assistant for NovaOps, a revenue intelligence platform built for the Amazon Nova AI Hackathon.
-
-USER QUESTION: {question}
-
-PLATFORM CONTEXT:
-- NovaOps is an autonomous revenue intelligence platform for ride-sharing operations
-- Uses XGBoost ML models with 14.69% WMAPE for demand, 18.48% WMAPE for revenue
-- Predicts across {num_zones} NYC taxi zones
-- Powered by Amazon Nova 2 Lite for natural language reasoning
-- Features: autonomous anomaly detection, what-if scenarios, optimization recommendations
-- Total forecasted demand: {total_demand:,.0f} trips
-- Total predicted revenue: {total_revenue:,.0f}
+CURRENT DATA:
+{data_context if data_context else "No specific data context needed for this question."}
 
 INSTRUCTIONS:
-Answer the question naturally and conversationally. If they're asking "why" or "how", explain the reasoning or methodology. If asking about capabilities, describe what the platform can do. If asking about technical choices (like "why XGBoost"), explain the rationale (gradient boosting handles non-linear relationships well, proven accuracy for time-series, interpretable). 
+Choose the most appropriate response format based on the question type:
 
-Keep responses friendly, informative, and concise (under 100 words). NO structured format - just natural conversation."""
+1. **For zone comparisons (e.g., "compare zone 237 and 161")**:
+   **Zone Performance Comparison**
+   Per-Period Averages:
+   - Zone A: X.X trips/period, revenue X,XXX/period, efficiency X.XX per trip
+   - Zone B: Y.Y trips/period, revenue Y,YYY/period, efficiency Y.YY per trip
+   Key Insight: [One sentence explaining which performs better and why]
+   Suggested Action: [Specific recommendation with percentage/timeframe]
+   Signal Confidence: 0.XX
+   Basis: XGBoost predictions + Historical zone performance patterns
+
+2. **For zone lists (e.g., "which zones have highest demand")**:
+   **Priority Zone List**
+   Top Zones:
+   1. Zone X: key metric
+   2. Zone Y: key metric
+   3. Zone Z: key metric
+   Key Pattern: [One sentence about common characteristics]
+   Suggested Action: [Specific action with percentage]
+   Signal Confidence: 0.XX
+   Basis: Ranked XGBoost predictions + Comparative zone analysis
+
+3. **For platform questions (why, how, what is, methodology)**:
+   Answer naturally and conversationally using the documentation provided above.
+   Explain the actual reasoning from the documentation, not generic knowledge.
+   Keep under 100 words, friendly and informative.
+
+4. **For single zone queries (e.g., "zone 132 performance")**:
+   **[Clear 2-4 Word Headline]**
+   Key Metrics:
+   - Zone: [number]
+   - Demand: [X.X] trips
+   - Revenue: [X,XXX]
+   Operational Insight: [One sentence explaining business significance]
+   Suggested Action: [Specific recommendation with numbers]
+   Signal Confidence: 0.XX
+   Basis: XGBoost time-series forecast + Zone historical patterns
+
+5. **For aggregate metrics (total revenue, average margin)**:
+   **Platform Statistics**
+   Key Metric: [Metric name]: [value]
+   Operational Insight: [One sentence about what this means]
+   Suggested Action: [How to maintain or improve]
+   Signal Confidence: 0.XX
+   Basis: Aggregate XGBoost forecasts across all zones
+
+RULES:
+- No dollar signs in output (avoid markdown issues)
+- Use actual data from the context provided
+- For conversational questions, use the documentation to give accurate answers
+- Confidence scores: 0.75-0.95 based on data quality/volume"""
 
         return self.nova.generate_explanation(prompt, max_tokens=500, temperature=0.6)
     
