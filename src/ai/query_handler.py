@@ -50,17 +50,19 @@ DATA:
 {context}
 
 FORMAT:
-**[Comparison Insight]**
+**[Zone Performance Comparison]**
 
-Zone [X] vs Zone [Y]:
-- Demand: [X.X] vs [Y.Y] trips ([±X]% difference)
-- Revenue: $[X,XXX] vs $[Y,YYY] ([±X]% difference)
-- Efficiency: $[X.XX] vs $[Y.YY] per trip
+Performance per Time Period:
+Zone [X]: [Y.Y] trips/period, $[Z,ZZZ]/period, $[A.AA]/trip
+Zone [Y]: [Y.Y] trips/period, $[Z,ZZZ]/period, $[A.AA]/trip
 
-Winner: Zone [X or Y] - [reason why]
+Key Insight:
+[Which zone performs better and why - be specific about efficiency, volume, or revenue]
 
 Suggested Action:
-[Specific recommendation for the underperformer]"""
+[Specific recommendation for the underperformer, with percentage or time-based action]
+
+Note: The data above shows averages per time period. See "Dataset Coverage" for totals."""
         
         # For aggregate/statistical queries
         elif any(word in question_lower for word in ['average', 'total', 'overall', 'mean', 'sum']):
@@ -212,29 +214,44 @@ CRITICAL RULES:
                 zone2_data = self.predictions[self.predictions['cluster_id'] == zone2]
                 
                 if not zone1_data.empty and not zone2_data.empty:
-                    z1_demand = zone1_data['demand_pred'].sum()
-                    z1_revenue = zone1_data['revenue_pred'].sum()
-                    z1_per_trip = z1_revenue / z1_demand if z1_demand > 0 else 0
+                    # Calculate totals
+                    z1_demand_total = zone1_data['demand_pred'].sum()
+                    z1_revenue_total = zone1_data['revenue_pred'].sum()
+                    z1_periods = len(zone1_data)
                     
-                    z2_demand = zone2_data['demand_pred'].sum()
-                    z2_revenue = zone2_data['revenue_pred'].sum()
-                    z2_per_trip = z2_revenue / z2_demand if z2_demand > 0 else 0
+                    z2_demand_total = zone2_data['demand_pred'].sum()
+                    z2_revenue_total = zone2_data['revenue_pred'].sum()
+                    z2_periods = len(zone2_data)
                     
-                    demand_diff = ((z1_demand - z2_demand) / z2_demand * 100) if z2_demand > 0 else 0
-                    revenue_diff = ((z1_revenue - z2_revenue) / z2_revenue * 100) if z2_revenue > 0 else 0
+                    # Calculate averages per time period
+                    z1_demand_avg = z1_demand_total / z1_periods
+                    z1_revenue_avg = z1_revenue_total / z1_periods
+                    z1_per_trip = z1_revenue_total / z1_demand_total if z1_demand_total > 0 else 0
                     
-                    context_parts.append(f"\n**ZONE COMPARISON:**")
-                    context_parts.append(f"Zone {zone1}:")
-                    context_parts.append(f"- Demand: {z1_demand:.1f} trips")
-                    context_parts.append(f"- Revenue: ${z1_revenue:,.2f}")
-                    context_parts.append(f"- Revenue per trip: ${z1_per_trip:.2f}")
-                    context_parts.append(f"\nZone {zone2}:")
-                    context_parts.append(f"- Demand: {z2_demand:.1f} trips")
-                    context_parts.append(f"- Revenue: ${z2_revenue:,.2f}")
-                    context_parts.append(f"- Revenue per trip: ${z2_per_trip:.2f}")
-                    context_parts.append(f"\nDifferences:")
+                    z2_demand_avg = z2_demand_total / z2_periods
+                    z2_revenue_avg = z2_revenue_total / z2_periods
+                    z2_per_trip = z2_revenue_total / z2_demand_total if z2_demand_total > 0 else 0
+                    
+                    demand_diff = ((z1_demand_avg - z2_demand_avg) / z2_demand_avg * 100) if z2_demand_avg > 0 else 0
+                    revenue_diff = ((z1_revenue_avg - z2_revenue_avg) / z2_revenue_avg * 100) if z2_revenue_avg > 0 else 0
+                    
+                    context_parts.append(f"\n**ZONE COMPARISON** (averaged across {z1_periods} time periods):")
+                    context_parts.append(f"\nZone {zone1} - Average per period:")
+                    context_parts.append(f"- Demand: {z1_demand_avg:.1f} trips/period")
+                    context_parts.append(f"- Revenue: ${z1_revenue_avg:,.2f}/period")
+                    context_parts.append(f"- Efficiency: ${z1_per_trip:.2f}/trip")
+                    context_parts.append(f"\nZone {zone2} - Average per period:")
+                    context_parts.append(f"- Demand: {z2_demand_avg:.1f} trips/period")
+                    context_parts.append(f"- Revenue: ${z2_revenue_avg:,.2f}/period")
+                    context_parts.append(f"- Efficiency: ${z2_per_trip:.2f}/trip")
+                    context_parts.append(f"\nPerformance Differences:")
                     context_parts.append(f"- Demand: {demand_diff:+.1f}% (Zone {zone1} vs Zone {zone2})")
                     context_parts.append(f"- Revenue: {revenue_diff:+.1f}% (Zone {zone1} vs Zone {zone2})")
+                    
+                    # Add total context for reference
+                    context_parts.append(f"\nDataset Coverage:")
+                    context_parts.append(f"- Zone {zone1}: {z1_periods} time periods, {z1_demand_total:,.0f} total trips, ${z1_revenue_total:,.0f} total revenue")
+                    context_parts.append(f"- Zone {zone2}: {z2_periods} time periods, {z2_demand_total:,.0f} total trips, ${z2_revenue_total:,.0f} total revenue")
                     return '\n'.join(context_parts)
         
         # Handle deployment/allocation questions (where to send drivers, etc.)
