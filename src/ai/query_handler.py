@@ -56,22 +56,97 @@ Be specific and data-driven."""
     
     def _extract_context(self, question: str) -> str:
         """Extract relevant data context based on question"""
+        import re
         question_lower = question.lower()
         context_parts = []
+        filtered_data = self.predictions.copy()
         
-        # Overall summary
-        context_parts.append(f"Total Predictions: {len(self.predictions)} zone-time combinations")
-        context_parts.append(f"Avg Demand: {self.predictions['demand_pred'].mean():.1f} trips")
-        context_parts.append(f"Avg Revenue: ${self.predictions['revenue_pred'].mean():.2f}")
-        context_parts.append(f"Avg Margin: {self.predictions['margin_pred'].mean()*100:.1f}%")
+        # Parse time filter (4pm, 16:00, etc.)
+        hour_filter = None
+        time_patterns = [
+            (r'(\d{1,2})\s*pm', lambda h: int(h) + 12 if int(h) != 12 else 12),
+            (r'(\d{1,2})\s*am', lambda h: int(h) if int(h) != 12 else 0),
+            (r'(\d{1,2}):00', lambda h: int(h)),
+            (r'hour\s+(\d{1,2})', lambda h: int(h))
+        ]
         
-        # Zone-specific
-        if 'zone' in question_lower:
-            # Try to extract zone number
-            import re
-            zone_match = re.search(r'\d+', question)
+        for pattern, converter in time_patterns:
+            match = re.search(pattern, question_lower)
+            if match:
+                hour_filter = converter(match.group(1))
+                break
+        
+        if hour_filter is not None and 'hour' in filtered_data.columns:
+            filtered_data = filtered_data[filtered_data['hour'] == hour_filter]
+            context_parts.append(f"FILTERED BY TIME: {hour_filter}:00 ({len(filtered_data)} records)")
+        
+        # Parse day filter (monday, tuesday, etc.)
+        day_map = {
+            'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+            'friday': 4, 'saturday': 5, 'sunday': 6
+        }
+        
+        day_filter = None
+        for day_name, day_num in day_map.items():
+            if day_name in question_lower:
+                day_filter = day_num
+                break
+        
+        if day_filter is not None and 'day_of_week' in filtered_data.columns:
+            filtered_data = filtered_data[filtered_data['day_of_week'] == day_filter]
+            day_name = [k for k, v in day_map.items() if v == day_filter][0].capitalize()
+            context_parts.append(f"FILTERED BY DAY: {day_name} ({len(filtered_data)} records)")
+        
+        # Handle "maximum rides" or "most rides" queries
+        time_filtered = hour_filter is not None or day_filter is not None
+        if any(keyword in question_lower for keyword in ['maximum', 'max', 'most', 'highest', 'where should i', 'should i be']):
+            if 'ride' in question_lower or 'demand' in question_lower or 'trip' in question_lower:
+                if len(filtered_data) > 0:
+                    # Find zone with maximum demand in filtered data
+                    max_row = filtered_data.loc[filtered_data['demand_pred'].idxmax()]
+                    
+                    # Build clear, direct answer
+                    filter_desc = []
+                    if hour_filter is not None:
+                        filter_desc.append(f"{hour_filter}:00")
+                    if day_filter is not None:
+                        day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                        filter_desc.append(day_names[day_filter])
+                    
+                    time_context = " at " + " ".join(filter_desc) if filter_desc else ""
+                    
+                    context_parts.append(f"\n**ANSWER: Zone {int(max_row['cluster_id'])}**")
+                    context_parts.append(f"This zone has the HIGHEST demand{time_context}:")
+                    context_parts.append(f"Demand: {max_row['demand_pred']:.1f} trips")
+                    context_parts.append(f"Revenue: ${max_row['revenue_pred']:.2f}")
+                    
+                    # Add context about other high-demand zones
+                    if len(filtered_data) >= 3:
+                        other_zones = filtered_data.nlargest(3, 'demand_pred')[['cluster_id', 'demand_pred']]
+                        other_zones = other_zones[other_zones['cluster_id'] != max_row['cluster_id']].head(2)
+                        if len(other_zones) > 0:
+                            context_parts.append(f"\nAlternative options{time_context}:")
+                            for idx, row in other_zones.iterrows():
+                                context_parts.append(f"- Zone {int(row['cluster_id'])}: {row['demand_pred']:.1f} trips")
+                    
+                    # Do NOT add global statistics for time-specific queries
+                    return '\n'.join(context_parts)
+                else:
+                    context_parts.append("No data matches the specified filters.")
+                    return '\n'.join(context_parts)
+        
+        # Overall summary (only for non-time-filtered general questions)
+        if not time_filtered and (len(context_parts) == 0 or 'average' in question_lower or 'overall' in question_lower):
+            context_parts.append(f"Total Predictions: {len(self.predictions)} zone-time combinations")
+            context_parts.append(f"Avg Demand: {self.predictions['demand_pred'].mean():.1f} trips")
+            context_parts.append(f"Avg Revenue: ${self.predictions['revenue_pred'].mean():.2f}")
+            context_parts.append(f"Avg Margin: {self.predictions['margin_pred'].mean()*100:.1f}%")
+        
+        # Zone-specific lookup (when zone number is explicitly mentioned)
+        if 'zone' in question_lower and not any(keyword in question_lower for keyword in ['which zone', 'what zone']):
+            zone_match = re.search(r'zone\s+(\d+)', question_lower)
             if zone_match:
-                zone_id = int(zone_match.group())
+                zone_id = int(zone_match.group(1))
                 zone_data = self.predictions[self.predictions['cluster_id'] == zone_id]
                 if not zone_data.empty:
                     context_parts.append(f"\nZone {zone_id} Details:")
@@ -79,25 +154,12 @@ Be specific and data-driven."""
                     context_parts.append(f"- Revenue: ${zone_data['revenue_pred'].mean():.2f}")
                     context_parts.append(f"- Profit: ${zone_data['profit_pred'].mean():.2f}")
         
-        # Top/bottom performers
-        if 'best' in question_lower or 'top' in question_lower or 'highest' in question_lower:
-            top5 = self.predictions.nlargest(5, 'revenue_pred')[['cluster_id', 'revenue_pred', 'demand_pred']]
-            context_parts.append(f"\nTop 5 Revenue Zones:\n{top5.to_string(index=False)}")
-        
-        if 'worst' in question_lower or 'bottom' in question_lower or 'lowest' in question_lower:
-            bottom5 = self.predictions.nsmallest(5, 'revenue_pred')[['cluster_id', 'revenue_pred', 'demand_pred']]
-            context_parts.append(f"\nBottom 5 Revenue Zones:\n{bottom5.to_string(index=False)}")
-        
-        # Time-based
-        if 'hour' in question_lower or 'time' in question_lower:
-            if 'hour' in self.predictions.columns:
-                hourly_avg = self.predictions.groupby('hour')['revenue_pred'].mean()
-                context_parts.append(f"\nHourly Revenue Patterns:\n{hourly_avg.to_string()}")
-        
-        # Profitability
+        # Profitability queries
         if 'profit' in question_lower or 'margin' in question_lower:
-            high_margin = self.predictions.nlargest(5, 'margin_pred')[['cluster_id', 'margin_pred', 'profit_pred']]
-            context_parts.append(f"\nHighest Margin Zones:\n{high_margin.to_string(index=False)}")
+            high_margin = filtered_data.nlargest(5, 'margin_pred')[['cluster_id', 'margin_pred', 'profit_pred']]
+            context_parts.append(f"\nHighest Margin Zones:")
+            for idx, row in high_margin.iterrows():
+                context_parts.append(f"  Zone {int(row['cluster_id'])}: {row['margin_pred']*100:.1f}% margin, ${row['profit_pred']:.2f} profit")
         
         return '\n'.join(context_parts)
     

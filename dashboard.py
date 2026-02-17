@@ -128,7 +128,7 @@ if 'monitoring_agent' not in st.session_state:
 st.sidebar.title("Navigation 🚕")
 page = st.sidebar.radio(
     "Choose a page:",
-    ["Project Overview", "Executive Dashboard", "Autonomous Agent", "Nova Chat", "What-If Simulator", "Zone Explorer", "Recommendations"]
+    ["Project Overview", "Executive Dashboard", "Autonomous Agent", "Nova Chat", "What-If Simulator", "Zone Insights", "Recommendations"]
 )
 
 # ----- PAGE 0: PROJECT OVERVIEW -----
@@ -228,18 +228,17 @@ if page == "Project Overview":
     st.subheader("▸ Business Problem")
     
     st.markdown("""
-    **Complex Real-World Problem:** Ride-sharing operators face revenue leakage across 260+ zones with 
-    dynamic demand patterns, price elasticity variations, and operational constraints. Optimizing revenue 
-    requires continuous monitoring, multi-factor analysis, and rapid decision-making.
+    **Complex Real-World Problem:** Ride-sharing companies lose money every day because they can’t keep
+     up with dynamic demand patterns and operational constraints across hundreds of different neighborhoods.
     
     **Traditional Approach Fails:** Human analysts manually review dashboards, run SQL queries, build 
     spreadsheets, and present findings in weekly meetings - taking 3-5 days per analysis cycle. By then, 
     opportunities are lost.
     
     **Agentic AI Solution:** Autonomous agents powered by **Amazon Nova reasoning capabilities** complete 
-    the entire optimization cycle (detect → investigate → propose → validate) in 20 seconds. Agents tackle 
-    complex root cause analysis using multi-step reasoning chains, considering demand patterns, pricing 
-    elasticity, cost structures, and competitive dynamics simultaneously.
+    the entire optimization cycle (detect → investigate → propose → validate) in 20 seconds. 
+    Agents tackle complex root cause analysis using multi-step reasoning chains, considering
+    demand patterns, cost structures, and operational constraints simultaneously.
     """)
     
     # Data & ML Models
@@ -622,10 +621,9 @@ elif page == "Executive Dashboard":
     )
     st.plotly_chart(fig, use_container_width=True)
     
-    # Nova-generated executive summary
-    st.subheader("Nova-Generated Summary")
+    # Nova-generated summary
     
-    if st.button("Generate Summary"):
+    if st.button("Generate Summary with Nova"):
         with st.spinner("Generating AI summary..."):
             summary = st.session_state.nova.generate_executive_summary(st.session_state.predictions)
             st.markdown(f'<div class="nova-response">{summary}</div>', unsafe_allow_html=True)
@@ -790,8 +788,8 @@ Provide a 2-3 sentence analysis: Is this a good strategy? What are the risks?"""
                         st.markdown(f'<div class="nova-response"><strong>Nova Analysis:</strong><br>{analysis}</div>', unsafe_allow_html=True)
 
 # ----- PAGE 4: ZONE EXPLORER -----
-elif page == "Zone Explorer":
-    st.markdown('<p class="main-header">Zone Deep-Dive Explorer</p>', unsafe_allow_html=True)
+elif page == "Zone Insights":
+    st.markdown('<p class="main-header">Zone Insights</p>', unsafe_allow_html=True)
     
     selected_zone = st.selectbox(
         "Select Zone to Explore",
@@ -1041,14 +1039,14 @@ elif page == "Autonomous Agent":
         4. **Execute** - Autonomous action implementation (with approval gates)
         
         **Complex Problem Tackled:** Revenue optimization requires simultaneous analysis of demand 
-        volatility, price elasticity, cost structures, competitive dynamics, and temporal patterns - 
-        a task Amazon Nova reasoning capabilities handle in seconds vs. days for human analysts.
+        volatility, cost structures, and temporal patterns - a task Amazon Nova reasoning 
+        capabilities handle in seconds vs. days for human analysts.
         """)
     
     with col_b:
         run_clicked = st.button("Run Monitoring Cycle", type="primary", use_container_width=True, key="run_agent")
         
-        if st.button("🔄 Reset Agent", use_container_width=True):
+        if st.button("Reset Agent", use_container_width=True):
             st.session_state.monitoring_agent = RevenueMonitoringAgent(
                 st.session_state.predictions,
                 st.session_state.nova
@@ -1059,7 +1057,7 @@ elif page == "Autonomous Agent":
     
     # Run monitoring cycle
     if run_clicked:
-        with st.spinner("🔍 STEP 1/3: Detecting anomalies across all zones..."):
+        with st.spinner("STEP 1/3: Detecting anomalies across all zones..."):
             import time
             time.sleep(1)
             report = st.session_state.monitoring_agent.run_monitoring_cycle()

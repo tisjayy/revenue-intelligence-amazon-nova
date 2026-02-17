@@ -22,10 +22,10 @@ Instead of static dashboards that require days of human analysis, NovaOps acts a
 
 ## The Business Problem
 
-Ride-sharing operators manage complex, dynamic marketplaces across hundreds of zones. Revenue leakage occurs due to pricing inefficiencies, supply-demand mismatches, and slow reaction times.
+**Complex Real-World Problem:** Ride-sharing companies lose money every day because they can't keep up with dynamic demand patterns and operational constraints across hundreds of different neighborhoods.
 
 * **Traditional Approach:** Analysts manually query SQL, build spreadsheets, and report findings weekly. By then, the opportunity is lost.
-* **The NovaOps Solution:** An autonomous agent continuously monitors all 260 zones. When an anomaly is detected, it triggers a multi-step reasoning chain to diagnose the root cause and propose a specific pricing intervention (e.g., "Increase fare by 10% in Zone 4") based on elasticity models.
+* **The NovaOps Solution:** An autonomous agent continuously monitors all 260 zones. When an anomaly is detected, it triggers a multi-step reasoning chain to diagnose the root cause and propose specific pricing interventions (e.g., "Increase fare by 10% in Zone 4").
 
 ---
 
@@ -41,9 +41,9 @@ We utilize **XGBoost (Extreme Gradient Boosting)** to create a baseline of "expe
 
 ### 2. The Analyst (Reasoning Engine)
 We utilize **Amazon Nova 2 Lite** via Amazon Bedrock to perform root cause analysis on the data provided by XGBoost.
-* **Root Cause Analysis:** Nova evaluates the deviation between predicted and actual metrics.
-* **Opportunity Assessment:** Calculates the "Upside Potential" (e.g., +163% growth target).
-* **Strategic Constraint:** Nova is prompt-engineered with economic logic (e.g., "Price elasticity is -0.5") to ensure recommendations are realistic and not hallucinations.
+* **Root Cause Analysis:** Nova analyzes why zones underperform compared to similar peer zones.
+* **Opportunity Assessment:** Calculates realistic revenue uplift targets based on peer benchmarks.
+* **Strategic Constraints:** Nova is prompt-engineered with business rules (e.g., "Max ±15% pricing changes") to ensure recommendations are realistic and implementable.
 
 ### 3. The Workflow
 ```mermaid
@@ -206,9 +206,9 @@ Visualizes ML predictions with:
 
 ### 4. Nova Chat
 Natural language interface to query predictions:
-* "Which zones have the highest revenue potential?"
+* "Which zone has highest demand at 9pm on Wednesday?"
 * "What's the average profit margin?"
-* "Compare zones 237 and 161"
+* "Which zones have the highest revenue potential?"
 
 ### 5. What-If Simulator
 Interactive pricing scenario analysis:
@@ -288,7 +288,7 @@ for tercile in ['small', 'medium', 'large']:
 The system prompt includes hard constraints to prevent hallucinations:
 ```
 CRITICAL CONSTRAINTS (Must Follow):
-- Pricing adjustments: Maximum +/-15% per change (price elasticity: -0.5 typical)
+- Pricing adjustments: Maximum +/-15% per change
 - Demand stimulation must be cost-effective (ROI > 2x)
 - Recommendations must be implementable within 30 days
 ```
@@ -353,8 +353,8 @@ Unlike traditional BI tools that require human interpretation, NovaOps operates 
 * Feature engineering with domain knowledge (lag, EMA, rush hour flags)
 
 ### 3. Business-Aware AI
-Amazon Nova is constrained by economic reality:
-* Price elasticity models (-0.5 typical for ride-sharing)
+Amazon Nova is constrained by business rules:
+* Pricing guardrails (±15% maximum per change)
 * ROI validation (2x minimum return)
 * Implementation feasibility (30-day window)
 
