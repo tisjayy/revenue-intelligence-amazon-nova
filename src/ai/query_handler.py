@@ -76,66 +76,61 @@ CURRENT DATA:
 {data_context if data_context else "No specific data context needed for this question."}
 
 🚨 CRITICAL RULES - MUST FOLLOW:
-1. NEVER INVENT DATA - Only use data provided in "CURRENT DATA" section above
-2. If no data is provided, answer conversationally using documentation
-3. For zone queries, ONLY reference zones that appear in the data above
-4. For "why/how" technical questions, USE THE DOCUMENTATION PROVIDED, not generic LLM knowledge
-5. NO dollar signs ($) in output - causes markdown formatting issues
+1. NEVER INVENT DATA - Only use data from "CURRENT DATA" section
+2. For zone queries, ONLY reference zones that appear in the data
+3. For technical questions, USE THE DOCUMENTATION PROVIDED, not generic LLM knowledge
+4. DO NOT echo format instructions - just follow the format silently
+5. NO dollar signs ($) in output
 
-RESPONSE FORMAT GUIDELINES:
-Choose the most appropriate format based on question type:
+RESPONSE FORMATS (choose one, follow the format exactly, DO NOT include format headers):
 
-1. **For zone comparisons (e.g., "compare zone 237 and 161")**:
-   **Zone Performance Comparison**
-   Per-Period Averages:
-   - Zone A: X.X trips/period, revenue X,XXX/period, efficiency X.XX per trip
-   - Zone B: Y.Y trips/period, revenue Y,YYY/period, efficiency Y.YY per trip
-   Key Insight: [One sentence explaining which performs better and why]
-   Suggested Action: [Specific recommendation with percentage/timeframe]
-   Signal Confidence: 0.XX
-   Basis: XGBoost predictions + Historical zone performance patterns
+FORMAT A - Zone Comparisons:
+**Zone Performance Comparison**
+Per-Period Averages:
+- Zone A: X.X trips/period, revenue X,XXX/period, efficiency X.XX per trip
+- Zone B: Y.Y trips/period, revenue Y,YYY/period, efficiency Y.YY per trip
+Key Insight: [explanation]
+Suggested Action: [recommendation]
+Signal Confidence: 0.XX
+Basis: XGBoost predictions + Historical zone performance patterns
 
-2. **For zone lists (e.g., "which zones have highest demand")**:
-   **Priority Zone List**
-   Top Zones (use ONLY zones from data above):
-   1. Zone X: key metric
-   2. Zone Y: key metric
-   3. Zone Z: key metric
-   Key Pattern: [One sentence about common characteristics]
-   Suggested Action: [Specific action with percentage]
-   Signal Confidence: 0.XX
-   Basis: Ranked XGBoost predictions + Comparative zone analysis
+FORMAT B - Zone Lists:
+**Priority Zone List**
+Top Zones (ONLY from data above):
+1. Zone X: metric
+2. Zone Y: metric
+3. Zone Z: metric
+Key Pattern: [common characteristics]
+Suggested Action: [action]
+Signal Confidence: 0.XX
+Basis: Ranked XGBoost predictions + Comparative zone analysis
 
-3. **For platform/technical questions (why, how, what is, methodology)**:
-   Answer naturally and conversationally using the DOCUMENTATION PROVIDED above.
-   Quote specific details from the documentation (numbers, technical terms, exact methodology).
-   DO NOT use generic LLM knowledge - use the actual NovaOps documentation.
-   Keep under 100 words, friendly and informative.
+FORMAT C - Technical/Platform Questions (why, how, what is):
+Answer conversationally using DOCUMENTATION PROVIDED.
+Quote specific details (numbers, methodology) from documentation.
+Keep under 100 words, friendly and informative.
+NO Signal Confidence or Basis for these conversational answers.
 
-4. **For single zone queries (e.g., "zone 132 performance")**:
-   **[Clear 2-4 Word Headline]**
-   Key Metrics:
-   - Zone: [number]
-   - Demand: [X.X] trips
-   - Revenue: [X,XXX] (NO DOLLAR SIGN)
-   Operational Insight: [One sentence explaining business significance]
-   Suggested Action: [Specific recommendation with numbers]
-   Signal Confidence: 0.XX
-   Basis: XGBoost time-series forecast + Zone historical patterns
+FORMAT D - Single Zone:
+**[Clear Headline]**
+Key Metrics:
+- Zone: [number]
+- Demand: [X.X] trips
+- Revenue: [X,XXX]
+Operational Insight: [significance]
+Suggested Action: [recommendation]
+Signal Confidence: 0.XX
+Basis: XGBoost time-series forecast + Zone historical patterns
 
-5. **For aggregate metrics (total revenue, average margin)**:
-   **Platform Statistics**
-   Key Metric: [Metric name]: [value] (NO DOLLAR SIGN)
-   Operational Insight: [One sentence about what this means]
-   Suggested Action: [How to maintain or improve]
-   Signal Confidence: 0.XX
-   Basis: Aggregate XGBoost forecasts across all zones
+FORMAT E - Aggregate Metrics:
+**Platform Statistics**
+Key Metric: [Metric]: [value]
+Operational Insight: [meaning]
+Suggested Action: [how to improve]
+Signal Confidence: 0.XX
+Basis: Aggregate XGBoost forecasts across all zones
 
-REMEMBER:
-- Use ONLY data from "CURRENT DATA" section - never invent zones or metrics
-- For technical questions, cite the documentation provided
-- No dollar signs in output
-- Confidence scores: 0.75-0.95 based on data quality/volume"""
+Select appropriate format and respond directly - do not mention format names or instructions."""
 
         return self.nova.generate_explanation(prompt, max_tokens=500, temperature=0.6)
     
