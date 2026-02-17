@@ -12,6 +12,12 @@ from datetime import datetime
 import sys
 from pathlib import Path
 import yaml
+import os
+
+# Configure AWS credentials from Streamlit secrets (for Streamlit Cloud deployment)
+if 'AWS_ACCESS_KEY_ID' in st.secrets:
+    os.environ['AWS_ACCESS_KEY_ID'] = st.secrets['AWS_ACCESS_KEY_ID']
+    os.environ['AWS_SECRET_ACCESS_KEY'] = st.secrets['AWS_SECRET_ACCESS_KEY']
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
