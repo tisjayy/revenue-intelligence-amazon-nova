@@ -49,20 +49,24 @@ USER QUESTION: {question}
 DATA:
 {context}
 
-FORMAT:
-**[Zone Performance Comparison]**
+RESPONSE FORMAT (copy this structure exactly):
 
-Performance per Time Period:
-Zone [X]: [Y.Y] trips/period, $[Z,ZZZ]/period, $[A.AA]/trip
-Zone [Y]: [Y.Y] trips/period, $[Z,ZZZ]/period, $[A.AA]/trip
+**Zone Performance Comparison**
+
+Per-Period Averages:
+- Zone A: X.X trips/period, revenue X,XXX/period, efficiency X.XX per trip
+- Zone B: Y.Y trips/period, revenue Y,YYY/period, efficiency Y.YY per trip
 
 Key Insight:
-[Which zone performs better and why - be specific about efficiency, volume, or revenue]
+One clear sentence explaining which zone performs better and why.
 
 Suggested Action:
-[Specific recommendation for the underperformer, with percentage or time-based action]
+Specific recommendation with a percentage target or timeframe.
 
-Note: The data above shows averages per time period. See "Dataset Coverage" for totals."""
+RULES:
+- Don't use dollar signs in the output (just write amounts as numbers)
+- Keep formatting simple to avoid markdown issues
+- Use actual data from context above"""
         
         # For aggregate/statistical queries
         elif any(word in question_lower for word in ['average', 'total', 'overall', 'mean', 'sum']):
@@ -73,18 +77,23 @@ USER QUESTION: {question}
 DATA:
 {context}
 
-FORMAT:
-**[Statistical Insight]**
+RESPONSE FORMAT:
 
-Platform Metrics:
-- {question_lower.split()[1] if len(question_lower.split()) > 1 else 'Metric'}: [value]
-- Context: [additional metric for context]
+**Platform Statistics**
+
+Key Metric:
+- [Metric name]: [value] (no dollar signs)
 
 Operational Insight:
-[What this means for the business]
+One sentence about what this means.
 
 Suggested Action:
-[How to maintain/improve this metric]"""
+How to maintain or improve this metric.
+
+RULES:
+- Keep it under 5 lines
+- Omit dollar signs from output
+- Use actual data from context"""
         
         # For zone list queries (lowest/highest/top/bottom)
         elif context and '\n-' in context and any(word in question_lower for word in ['lowest', 'highest', 'top', 'bottom', 'worst', 'best']):
@@ -95,21 +104,25 @@ USER QUESTION: {question}
 DATA:
 {context}
 
-FORMAT:
-**[List Insight Headline]**
+RESPONSE FORMAT:
 
-The data shows specific zones in your query above. Present them as:
+**Priority Zone List**
 
-Top Priority Zones:
-1. Zone [ID]: [key metric]
-2. Zone [ID]: [key metric]
-3. Zone [ID]: [key metric]
+Top Zones (extract from data above):
+1. Zone X: key metric
+2. Zone Y: key metric  
+3. Zone Z: key metric
 
 Key Pattern:
-[One sentence about what these zones have in common]
+One sentence about common characteristics.
 
 Suggested Action:
-[Specific action with percentage or number]"""
+Specific action with percentage.
+
+RULES:
+- No dollar signs
+- Use actual zones from data
+- Keep under 6 lines"""
         
         # For single zone queries (default)
         else:
@@ -120,27 +133,26 @@ USER QUESTION: {question}
 RELEVANT DATA:
 {context}
 
-REQUIRED RESPONSE FORMAT:
+RESPONSE FORMAT:
 
-**[Write a clear 2-4 word insight headline]**
+**[Clear 2-4 Word Headline]**
 
 Key Metrics:
-- Zone: [zone number]
-- Demand: [X.X trips]
-- Revenue: $[X,XXX]
+- Zone: [number]
+- Demand: [X.X] trips
+- Revenue: [X,XXX] (omit dollar sign to avoid formatting issues)
 
 Operational Insight:
-[One clear sentence explaining the business significance]
+One sentence explaining business significance.
 
 Suggested Action:
-[Specific recommendation with percentages/numbers, e.g., "Increase drivers by 10-15%" or "Deploy 20 vehicles"]
+Specific recommendation with numbers (e.g., "Increase drivers by 10-15%")
 
-CRITICAL RULES:
-1. Replace ALL bracketed text with actual data from context above
-2. Format currency: $2,327 (with commas, no decimals)
-3. Round trips to 1 decimal: 163.4 trips
-4. Give numerical action items (percentages, driver counts, time windows)
-5. Keep total response under 6 lines"""
+RULES:
+1. Use actual data from context
+2. Keep response under 6 lines
+3. No dollar signs in output (just write amounts)
+4. Give specific numerical targets"""
 
         return self.nova.generate_explanation(prompt, max_tokens=500, temperature=0.6)
     
