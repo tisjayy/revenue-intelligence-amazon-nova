@@ -35,10 +35,32 @@ class QueryHandler:
         Returns:
             AI-generated answer with RAG context and data
         """
+        # VALIDATION: Check for invalid zone numbers
+        zone_numbers = re.findall(r'\b(zone|cluster)\s*(\d+)', question.lower())
+        valid_zones = set(self.predictions['cluster_id'].unique())
+        invalid_zones = []
+        
+        for _, zone_str in zone_numbers:
+            zone_num = int(zone_str)
+            if zone_num not in valid_zones:
+                invalid_zones.append(zone_num)
+        
+        # Return error for invalid zones
+        if invalid_zones:
+            valid_range = f"{min(valid_zones)}-{max(valid_zones)}"
+            return f"❌ **Invalid Zone(s): {', '.join(map(str, invalid_zones))}**\n\nValid zones are in range {valid_range}. We have {len(valid_zones)} zones with prediction data.\n\nPlease ask about existing zones."
+        
         # Get relevant documentation via RAG
         rag_context = ""
         if hasattr(self, 'rag') and self.rag.indexed:
             rag_context = self.rag.get_context(question)
+            if rag_context:
+                rag_context = f"""📚 PROJECT DOCUMENTATION (USE THIS FOR TECHNICAL QUESTIONS):
+{rag_context}
+
+⚠️ IMPORTANT: For "why" and "how" questions, quote specific details from documentation above (exact numbers, features, methodology).
+DO NOT use generic LLM knowledge - use the NovaOps documentation provided.
+"""
         
         # Get relevant data context
         data_context = self._extract_context(question)
@@ -53,8 +75,15 @@ USER QUESTION: {question}
 CURRENT DATA:
 {data_context if data_context else "No specific data context needed for this question."}
 
-INSTRUCTIONS:
-Choose the most appropriate response format based on the question type:
+🚨 CRITICAL RULES - MUST FOLLOW:
+1. NEVER INVENT DATA - Only use data provided in "CURRENT DATA" section above
+2. If no data is provided, answer conversationally using documentation
+3. For zone queries, ONLY reference zones that appear in the data above
+4. For "why/how" technical questions, USE THE DOCUMENTATION PROVIDED, not generic LLM knowledge
+5. NO dollar signs ($) in output - causes markdown formatting issues
+
+RESPONSE FORMAT GUIDELINES:
+Choose the most appropriate format based on question type:
 
 1. **For zone comparisons (e.g., "compare zone 237 and 161")**:
    **Zone Performance Comparison**
@@ -68,7 +97,7 @@ Choose the most appropriate response format based on the question type:
 
 2. **For zone lists (e.g., "which zones have highest demand")**:
    **Priority Zone List**
-   Top Zones:
+   Top Zones (use ONLY zones from data above):
    1. Zone X: key metric
    2. Zone Y: key metric
    3. Zone Z: key metric
@@ -77,9 +106,10 @@ Choose the most appropriate response format based on the question type:
    Signal Confidence: 0.XX
    Basis: Ranked XGBoost predictions + Comparative zone analysis
 
-3. **For platform questions (why, how, what is, methodology)**:
-   Answer naturally and conversationally using the documentation provided above.
-   Explain the actual reasoning from the documentation, not generic knowledge.
+3. **For platform/technical questions (why, how, what is, methodology)**:
+   Answer naturally and conversationally using the DOCUMENTATION PROVIDED above.
+   Quote specific details from the documentation (numbers, technical terms, exact methodology).
+   DO NOT use generic LLM knowledge - use the actual NovaOps documentation.
    Keep under 100 words, friendly and informative.
 
 4. **For single zone queries (e.g., "zone 132 performance")**:
@@ -87,7 +117,7 @@ Choose the most appropriate response format based on the question type:
    Key Metrics:
    - Zone: [number]
    - Demand: [X.X] trips
-   - Revenue: [X,XXX]
+   - Revenue: [X,XXX] (NO DOLLAR SIGN)
    Operational Insight: [One sentence explaining business significance]
    Suggested Action: [Specific recommendation with numbers]
    Signal Confidence: 0.XX
@@ -95,16 +125,16 @@ Choose the most appropriate response format based on the question type:
 
 5. **For aggregate metrics (total revenue, average margin)**:
    **Platform Statistics**
-   Key Metric: [Metric name]: [value]
+   Key Metric: [Metric name]: [value] (NO DOLLAR SIGN)
    Operational Insight: [One sentence about what this means]
    Suggested Action: [How to maintain or improve]
    Signal Confidence: 0.XX
    Basis: Aggregate XGBoost forecasts across all zones
 
-RULES:
-- No dollar signs in output (avoid markdown issues)
-- Use actual data from the context provided
-- For conversational questions, use the documentation to give accurate answers
+REMEMBER:
+- Use ONLY data from "CURRENT DATA" section - never invent zones or metrics
+- For technical questions, cite the documentation provided
+- No dollar signs in output
 - Confidence scores: 0.75-0.95 based on data quality/volume"""
 
         return self.nova.generate_explanation(prompt, max_tokens=500, temperature=0.6)
@@ -358,6 +388,40 @@ RULES:
                 context_parts.append("(Zones with decent demand but below-median revenue)")
                 for _, row in improvement_zones.iterrows():
                     context_parts.append(f"- Zone {int(row['cluster_id'])}: ${row['revenue_pred']:,.0f} revenue, {row['demand_pred']:.0f} trips, {row['margin_pred']*100:.1f}% margin")
+                return '\n'.join(context_parts)
+        
+        # Handle pricing/strategy questions (e.g., "which zones would benefit from price increase")
+        if any(keyword in question_lower for keyword in ['price increase', 'pricing', 'raise price', 'increase price', 'fare increase']):
+            if any(word in question_lower for word in ['benefit', 'should', 'recommend', 'which zone']):
+                # Find zones with high demand and low price elasticity (high efficiency but room for growth)
+                zone_summary = self.predictions.groupby('cluster_id').agg({
+                    'demand_pred': 'sum',
+                    'revenue_pred': 'sum',
+                    'margin_pred': 'mean'
+                }).reset_index()
+                
+                zone_summary['revenue_per_trip'] = zone_summary['revenue_pred'] / zone_summary['demand_pred']
+                
+                # High demand zones (above median) - can absorb price increase
+                high_demand_threshold = zone_summary['demand_pred'].quantile(0.60)
+                
+                # Zones with high demand AND good margins
+                price_increase_candidates = zone_summary[
+                    (zone_summary['demand_pred'] >= high_demand_threshold) &
+                    (zone_summary['margin_pred'] >= 0.25)
+                ].nlargest(5, 'demand_pred')
+                
+                context_parts.append("\n**ZONES FOR PRICE INCREASE STRATEGY:**")
+                context_parts.append("(High-demand zones with capacity to absorb 10% price increase)")
+                for _, row in price_increase_candidates.iterrows():
+                    potential_revenue = row['revenue_pred'] * 1.10  # 10% increase
+                    upside = potential_revenue - row['revenue_pred']
+                    context_parts.append(
+                        f"- Zone {int(row['cluster_id'])}: {row['demand_pred']:.0f} trips, "
+                        f"{row['revenue_pred']:,.0f} revenue, {row['margin_pred']*100:.1f}% margin, "
+                        f"potential upside: {upside:,.0f}"
+                    )
+                
                 return '\n'.join(context_parts)
         
         # Overall summary (only for non-time-filtered general questions)
