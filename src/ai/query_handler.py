@@ -5,6 +5,7 @@ Answers business questions using predictions + Nova explanations
 
 import pandas as pd
 import numpy as np
+import re
 from typing import Dict, Optional, List
 from datetime import datetime, timedelta
 from .nova_explainer import NovaExplainer
@@ -40,8 +41,27 @@ class QueryHandler:
         # Determine response style based on question type
         question_lower = question.lower()
         
-        # For comparison queries
-        if any(word in question_lower for word in ['compare', 'versus', 'vs', 'vs.', 'difference between']):
+        # Helper function to check if question is asking for specific data/metrics
+        def is_data_query():
+            """Returns True if question is clearly asking for specific data/metrics"""
+            # Specific zone queries (zone 132, cluster 45, etc.)
+            if re.search(r'\b(zone|cluster)\s*\d+', question_lower):
+                return True
+            # Comparison with zone numbers
+            if re.search(r'compare.*\d+', question_lower):
+                return True
+            # Lists of zones
+            if context and '\n-' in context and any(word in question_lower for word in ['which zone', 'what zone', 'show me zone']):
+                return True
+            # Platform aggregate metrics
+            if any(phrase in question_lower for phrase in ['total revenue', 'total demand', 'total profit', 'average margin', 'platform total']):
+                return True
+            return False
+        
+        # STRUCTURED FORMATS (only for clear data queries)
+        
+        # Zone comparison queries
+        if any(word in question_lower for word in ['compare', 'versus', 'vs', 'vs.', 'difference between']) and is_data_query():
             prompt = f"""You are a revenue intelligence assistant.
 
 USER QUESTION: {question}
@@ -72,8 +92,8 @@ RULES:
 - Use actual data from context above
 - Confidence should be 0.75-0.92 based on data volume (more periods = higher confidence)"""
         
-        # For aggregate/statistical queries
-        elif any(word in question_lower for word in ['average', 'total', 'overall', 'mean', 'sum']):
+        # Platform aggregate metrics (total/average with clear metric name)
+        elif is_data_query() and any(word in question_lower for word in ['total', 'average', 'overall', 'platform']):
             prompt = f"""You are a revenue intelligence assistant.
 
 USER QUESTION: {question}
@@ -103,8 +123,8 @@ RULES:
 - Use actual data from context
 - Confidence 0.80-0.95 for aggregate metrics (more data points = higher confidence)"""
         
-        # For zone list queries (lowest/highest/top/bottom)
-        elif context and '\n-' in context and any(word in question_lower for word in ['lowest', 'highest', 'top', 'bottom', 'worst', 'best']):
+        # Zone list queries (asking for which zones)
+        elif context and '\n-' in context and any(phrase in question_lower for word in ['which zone', 'what zone', 'show me zone', 'list zone', 'zones with'] for phrase in [word]):
             prompt = f"""You are a revenue intelligence assistant.
 
 USER QUESTION: {question}
@@ -136,22 +156,8 @@ RULES:
 - Keep under 8 lines
 - Confidence 0.78-0.90 based on how clearly zones cluster"""
         
-        # For general/conversational questions (no structured format)
-        elif any(word in question_lower for word in ['about this project', 'what is this', 'explain this', 'tell me about', 'how does this', 'what can you', 'describe this', 'overview', 'introduction']):
-            prompt = f"""You are a helpful assistant for a revenue intelligence platform built for Amazon Nova AI Hackathon.
-
-USER QUESTION: {question}
-
-Answer naturally and conversationally. Explain that this is NovaOps - an autonomous revenue intelligence platform for ride-sharing operations that:
-- Uses XGBoost ML models to predict demand and revenue across 260 NYC taxi zones
-- Leverages Amazon Nova 2 Lite for natural language reasoning and recommendations
-- Features an autonomous agent that detects anomalies and proposes optimizations
-- Provides what-if scenario analysis for pricing decisions
-
-Keep your response friendly, informative, and under 100 words. No structured format needed."""
-        
-        # For single zone queries (default)
-        else:
+        # Specific single zone query
+        elif is_data_query() and re.search(r'\b(zone|cluster)\s*\d+', question_lower):
             prompt = f"""You are a revenue intelligence assistant answering questions about ride-sharing forecasts.
 
 USER QUESTION: {question}
@@ -183,12 +189,36 @@ RULES:
 3. No dollar signs in output (just write amounts)
 4. Give specific numerical targets
 5. Confidence 0.75-0.92 (higher for zones with more data points)"""
+        
+        # CONVERSATIONAL (default for everything else)
+        else:
+            # Build context about the platform for conversational answers
+            total_demand = self.predictions['demand_pred'].sum()
+            total_revenue = self.predictions['revenue_pred'].sum()
+            num_zones = self.predictions['cluster_id'].nunique()
+            
+            prompt = f"""You are an AI assistant for NovaOps, a revenue intelligence platform built for the Amazon Nova AI Hackathon.
+
+USER QUESTION: {question}
+
+PLATFORM CONTEXT:
+- NovaOps is an autonomous revenue intelligence platform for ride-sharing operations
+- Uses XGBoost ML models with 14.69% WMAPE for demand, 18.48% WMAPE for revenue
+- Predicts across {num_zones} NYC taxi zones
+- Powered by Amazon Nova 2 Lite for natural language reasoning
+- Features: autonomous anomaly detection, what-if scenarios, optimization recommendations
+- Total forecasted demand: {total_demand:,.0f} trips
+- Total predicted revenue: {total_revenue:,.0f}
+
+INSTRUCTIONS:
+Answer the question naturally and conversationally. If they're asking "why" or "how", explain the reasoning or methodology. If asking about capabilities, describe what the platform can do. If asking about technical choices (like "why XGBoost"), explain the rationale (gradient boosting handles non-linear relationships well, proven accuracy for time-series, interpretable). 
+
+Keep responses friendly, informative, and concise (under 100 words). NO structured format - just natural conversation."""
 
         return self.nova.generate_explanation(prompt, max_tokens=500, temperature=0.6)
     
     def _extract_context(self, question: str) -> str:
         """Extract relevant data context based on question"""
-        import re
         question_lower = question.lower()
         context_parts = []
         filtered_data = self.predictions.copy()
