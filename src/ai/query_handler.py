@@ -37,8 +37,81 @@ class QueryHandler:
         # Extract data context based on question keywords
         context = self._extract_context(question)
         
-        # Build data-driven prompt
-        prompt = f"""You are a revenue intelligence assistant answering questions about ride-sharing forecasts.
+        # Determine response style based on question type
+        question_lower = question.lower()
+        
+        # For comparison queries
+        if any(word in question_lower for word in ['compare', 'versus', 'vs', 'vs.', 'difference between']):
+            prompt = f"""You are a revenue intelligence assistant.
+
+USER QUESTION: {question}
+
+DATA:
+{context}
+
+FORMAT:
+**[Comparison Insight]**
+
+Zone [X] vs Zone [Y]:
+- Demand: [X.X] vs [Y.Y] trips ([±X]% difference)
+- Revenue: $[X,XXX] vs $[Y,YYY] ([±X]% difference)
+- Efficiency: $[X.XX] vs $[Y.YY] per trip
+
+Winner: Zone [X or Y] - [reason why]
+
+Suggested Action:
+[Specific recommendation for the underperformer]"""
+        
+        # For aggregate/statistical queries
+        elif any(word in question_lower for word in ['average', 'total', 'overall', 'mean', 'sum']):
+            prompt = f"""You are a revenue intelligence assistant.
+
+USER QUESTION: {question}
+
+DATA:
+{context}
+
+FORMAT:
+**[Statistical Insight]**
+
+Platform Metrics:
+- {question_lower.split()[1] if len(question_lower.split()) > 1 else 'Metric'}: [value]
+- Context: [additional metric for context]
+
+Operational Insight:
+[What this means for the business]
+
+Suggested Action:
+[How to maintain/improve this metric]"""
+        
+        # For zone list queries (lowest/highest/top/bottom)
+        elif context and '\n-' in context and any(word in question_lower for word in ['lowest', 'highest', 'top', 'bottom', 'worst', 'best']):
+            prompt = f"""You are a revenue intelligence assistant.
+
+USER QUESTION: {question}
+
+DATA:
+{context}
+
+FORMAT:
+**[List Insight Headline]**
+
+The data shows specific zones in your query above. Present them as:
+
+Top Priority Zones:
+1. Zone [ID]: [key metric]
+2. Zone [ID]: [key metric]
+3. Zone [ID]: [key metric]
+
+Key Pattern:
+[One sentence about what these zones have in common]
+
+Suggested Action:
+[Specific action with percentage or number]"""
+        
+        # For single zone queries (default)
+        else:
+            prompt = f"""You are a revenue intelligence assistant answering questions about ride-sharing forecasts.
 
 USER QUESTION: {question}
 
@@ -126,6 +199,43 @@ CRITICAL RULES:
                     filtered_data = filtered_data[filtered_data['hour'].isin(hours)]
                     context_parts.append(f"FILTERED BY TIME RANGE: {time_name.title()} ({min(hours)}-{max(hours)}:00, {len(filtered_data)} records)")
                     break
+        
+        # Handle comparison queries (compare zones X and Y)
+        if any(keyword in question_lower for keyword in ['compare', 'versus', 'vs', 'vs.', 'difference between']):
+            # Extract zone numbers
+            zone_numbers = re.findall(r'\b(\d+)\b', question_lower)
+            if len(zone_numbers) >= 2:
+                zone1 = int(zone_numbers[0])
+                zone2 = int(zone_numbers[1])
+                
+                zone1_data = self.predictions[self.predictions['cluster_id'] == zone1]
+                zone2_data = self.predictions[self.predictions['cluster_id'] == zone2]
+                
+                if not zone1_data.empty and not zone2_data.empty:
+                    z1_demand = zone1_data['demand_pred'].sum()
+                    z1_revenue = zone1_data['revenue_pred'].sum()
+                    z1_per_trip = z1_revenue / z1_demand if z1_demand > 0 else 0
+                    
+                    z2_demand = zone2_data['demand_pred'].sum()
+                    z2_revenue = zone2_data['revenue_pred'].sum()
+                    z2_per_trip = z2_revenue / z2_demand if z2_demand > 0 else 0
+                    
+                    demand_diff = ((z1_demand - z2_demand) / z2_demand * 100) if z2_demand > 0 else 0
+                    revenue_diff = ((z1_revenue - z2_revenue) / z2_revenue * 100) if z2_revenue > 0 else 0
+                    
+                    context_parts.append(f"\n**ZONE COMPARISON:**")
+                    context_parts.append(f"Zone {zone1}:")
+                    context_parts.append(f"- Demand: {z1_demand:.1f} trips")
+                    context_parts.append(f"- Revenue: ${z1_revenue:,.2f}")
+                    context_parts.append(f"- Revenue per trip: ${z1_per_trip:.2f}")
+                    context_parts.append(f"\nZone {zone2}:")
+                    context_parts.append(f"- Demand: {z2_demand:.1f} trips")
+                    context_parts.append(f"- Revenue: ${z2_revenue:,.2f}")
+                    context_parts.append(f"- Revenue per trip: ${z2_per_trip:.2f}")
+                    context_parts.append(f"\nDifferences:")
+                    context_parts.append(f"- Demand: {demand_diff:+.1f}% (Zone {zone1} vs Zone {zone2})")
+                    context_parts.append(f"- Revenue: {revenue_diff:+.1f}% (Zone {zone1} vs Zone {zone2})")
+                    return '\n'.join(context_parts)
         
         # Handle deployment/allocation questions (where to send drivers, etc.)
         if any(keyword in question_lower for keyword in ['deploy', 'allocate', 'send', 'position', 'station']):
