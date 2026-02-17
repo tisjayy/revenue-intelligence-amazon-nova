@@ -14,7 +14,6 @@ from pathlib import Path
 import yaml
 import os
 
-# Configure AWS credentials from Streamlit secrets (for Streamlit Cloud deployment)
 try:
     if 'AWS_BEARER_TOKEN_BEDROCK' in st.secrets:
         os.environ['AWS_BEARER_TOKEN_BEDROCK'] = st.secrets['AWS_BEARER_TOKEN_BEDROCK']
@@ -22,10 +21,8 @@ try:
         os.environ['AWS_ACCESS_KEY_ID'] = st.secrets['AWS_ACCESS_KEY_ID']
         os.environ['AWS_SECRET_ACCESS_KEY'] = st.secrets['AWS_SECRET_ACCESS_KEY']
 except FileNotFoundError:
-    # No secrets file - running locally with environment variables
     pass
 
-# Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
 from ai.nova_explainer import NovaExplainer
@@ -33,7 +30,6 @@ from ai.query_handler import QueryHandler
 from ai.recommendations import RecommendationEngine
 from ai.monitoring_agent import RevenueMonitoringAgent
 
-# NYC Taxi Zone Centroids (representative coordinates for major zones)
 def get_zone_coordinates():
     """Returns approximate centroid coordinates for NYC taxi zones"""
     # Manhattan: 1-103, Bronx: 104-130, Brooklyn: 131-177, Queens: 178-236, Staten Island: 237-263
@@ -137,25 +133,111 @@ page = st.sidebar.radio(
 
 # ----- PAGE 0: PROJECT OVERVIEW -----
 if page == "Project Overview":
-    st.markdown('<p class="main-header">Revenue Intelligence - Amazon Nova</p>', unsafe_allow_html=True)
-    st.markdown("**Agentic AI Category** – Amazon Nova Hackathon")
+    # Hero Section
+    st.markdown("""
+    <div style='text-align: center; padding: 2rem 0 1rem 0;'>
+        <h1 style='font-size: 3.5rem; font-weight: 700; margin: 0; background: linear-gradient(90deg, #1f77b4, #00b4d8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;'>
+            NovaOps
+        </h1>
+        <p style='font-size: 1.4rem; color: #666; margin: 0.5rem 0 0 0;'>
+            Autonomous Revenue Intelligence
+        </p>
+        <p style='font-size: 1rem; color: #999; margin: 0.3rem 0 0 0;'>
+            <strong>Agentic AI Category</strong> – Amazon Nova Hackathon
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
+    # Key Metrics Row
+    metric_cols = st.columns(4)
+    with metric_cols[0]:
+        st.markdown("""
+        <div style='text-align: center; padding: 1rem; background: #f0f8ff; border-radius: 10px;'>
+            <h3 style='color: #1f77b4; margin: 0; font-size: 2.5rem;'>7.20%</h3>
+            <p style='color: #666; margin: 0.5rem 0 0 0; font-size: 0.9rem;'>Prediction Error (WMAPE)</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with metric_cols[1]:
+        st.markdown("""
+        <div style='text-align: center; padding: 1rem; background: #f0fff4; border-radius: 10px;'>
+            <h3 style='color: #10b981; margin: 0; font-size: 2.5rem;'>12.7M</h3>
+            <p style='color: #666; margin: 0.5rem 0 0 0; font-size: 0.9rem;'>NYC Taxi Trips</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with metric_cols[2]:
+        st.markdown("""
+        <div style='text-align: center; padding: 1rem; background: #fff7ed; border-radius: 10px;'>
+            <h3 style='color: #f59e0b; margin: 0; font-size: 2.5rem;'>260</h3>
+            <p style='color: #666; margin: 0.5rem 0 0 0; font-size: 0.9rem;'>Taxi Zones</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with metric_cols[3]:
+        st.markdown("""
+        <div style='text-align: center; padding: 1rem; background: #fdf2f8; border-radius: 10px;'>
+            <h3 style='color: #ec4899; margin: 0; font-size: 2.5rem;'>20s</h3>
+            <p style='color: #666; margin: 0.5rem 0 0 0; font-size: 0.9rem;'>Agent Analysis Time</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Visual Demo - Top Zones Performance
+    st.markdown("### 📊 Live Revenue Intelligence")
+    
+    top_zones = st.session_state.predictions.groupby('zone_id').agg({
+        'revenue_pred': 'sum',
+        'demand_pred': 'sum',
+        'profit_pred': 'sum'
+    }).reset_index().nlargest(10, 'revenue_pred')
+    
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=top_zones['zone_id'],
+        y=top_zones['revenue_pred'],
+        name='Revenue',
+        marker_color='#1f77b4',
+        text=top_zones['revenue_pred'].apply(lambda x: f'${x:,.0f}'),
+        textposition='outside'
+    ))
+    
+    fig.update_layout(
+        title='Top 10 Revenue Zones - Real Predictions',
+        xaxis_title='Zone ID',
+        yaxis_title='Total Revenue ($)',
+        height=350,
+        showlegend=False,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Concise Overview
     st.markdown("---")
-    
-    # Project Overview
-    st.subheader("◆ Project Overview")
+    st.markdown("### 🎯 The Agentic AI Approach")
     
     col1, col2 = st.columns([2, 1])
     
     with col1:
         st.markdown("""
-        **Agentic AI Revenue Intelligence Platform** tackles complex, real-world revenue optimization problems 
-        using **Amazon Nova reasoning capabilities**. Autonomous agents continuously monitor operations, 
-        investigate anomalies with multi-step reasoning, and propose actionable strategies.
+        **NovaOps: Revenue Intelligence Platform** tackles complex, real-world revenue optimization problems 
+        using **Amazon Nova reasoning capabilities**. 
         
-        **Key Innovation:** Built for the **Agentic AI** category - agents use Amazon Nova 2 Lite to 
-        autonomously detect revenue issues, perform root cause analysis with sophisticated reasoning chains, 
-        and generate specific recommendations - completing in 20 seconds what takes human analysts days.
+        Traditional statistical models (XGBoost, ARIMA) provide highly accurate forecasts but cannot explain results 
+        in business terms. Pure generative AI models can explain trends but cannot reliably compute financial outcomes 
+        from raw operational data.
+
+        NovaOps is an **Autonomous Reasoning Engine** that doesn’t just predict the *what* (Revenue = $X),  
+        but diagnoses the *why* (Driver shortage, demand surge, weather impact) and recommends — and eventually 
+        executes — the *how* (pricing surge, supply reallocation, incentive strategy).
+
+        **■ The Calculator — XGBoost Forecast Engine**  
+        Trained on 400K+ aggregated time-series samples derived from **12.7M real-world trips**, capturing spatial 
+        and temporal demand patterns to generate reliable demand, revenue, and profit forecasts.
+
+        **□ The Analyst — Amazon Nova Reasoning Engine**  
+        Interprets model outputs using operational context (time-of-day patterns, zone demand dynamics, constraints) 
+        to produce business explanations and revenue optimization recommendations.
         """)
     
     with col2:
